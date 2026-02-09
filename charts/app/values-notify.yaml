@@ -1,0 +1,57 @@
+# BC Notify specific overrides
+global:
+  repository: bcgov
+  domain: "apps.silver.devops.gov.bc.ca"
+  autoscaling: false
+  secrets:
+    enabled: false  # We'll manage secrets separately for now
+
+# Backend (NestJS Notify API)
+backend:
+  enabled: true
+  deploymentStrategy: RollingUpdate
+  autoscaling:
+    enabled: false
+  containers:
+    - name: backend
+      registry: ghcr.io
+      repository: bcgov/notify
+      image: backend
+      tag: latest
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 3000
+        initialDelaySeconds: 5
+        periodSeconds: 5
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 3000
+        initialDelaySeconds: 30
+        periodSeconds: 10
+      env:
+        fromValues:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "3000"
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+
+# Disable frontend (we don't have one yet)
+frontend:
+  enabled: false
+
+# Disable Crunchy PostgreSQL (not needed yet)
+crunchy:
+  enabled: false

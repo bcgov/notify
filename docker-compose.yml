@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: notify-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - API_KEY=dev-api-key-change-in-production
+      - CHES_BASE_URL=https://ches.api.gov.bc.ca/api/v1
+      - CHES_TOKEN_URL=https://loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - notify-network
+
+networks:
+  notify-network:
+    driver: bridge
