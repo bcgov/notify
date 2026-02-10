@@ -17,7 +17,7 @@ jobs:
     env:
       # https://tecadmin.net/getting-yesterdays-date-in-bash/
       CUTOFF: "1 week ago"
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Clean up Helm Releases
@@ -55,33 +55,18 @@ jobs:
               fi
             done
 
-  # https://github.com/bcgov/quickstart-openshift-helpers
-  schema-spy:
-    name: SchemaSpy
-    permissions:
-      contents: write
-      pages: write
-    uses: bcgov/quickstart-openshift-helpers/.github/workflows/.schema-spy.yml@6d695dd755fa9255ea4bde335890516beb6f95e4 # v1.0.1
-
-  # Run sequentially to reduce chances of rate limiting
+  # ZAP Scan - Backend only for now
   zap:
     name: ZAP Scans
     permissions:
       issues: write
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        name: [backend, frontend]
-        include:
-          - name: backend
-            path: api
-          - name: frontend
     steps:
-      - name: ZAP Scan
+      - name: ZAP Scan Backend
         uses: zaproxy/action-full-scan@3c58388149901b9a03b7718852c5ba889646c27c # v0.13.0
         with:
           allow_issue_writing: true
-          artifact_name: ${{ matrix.name }}
-          issue_title: "ZAP Security Report: ${{ matrix.name }}"
+          artifact_name: backend
+          issue_title: "ZAP Security Report: Backend"
           token: ${{ secrets.GITHUB_TOKEN }}
-          target: https://${{ github.event.repository.name }}-test.apps.silver.devops.gov.bc.ca/${{ matrix.path }}
+          target: https://${{ github.event.repository.name }}-test.apps.silver.devops.gov.bc.ca/api

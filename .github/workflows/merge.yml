@@ -30,8 +30,9 @@ jobs:
     secrets: inherit
     with:
       environment: test
-      db_user: appproxy # appproxy is the user which works with pgbouncer.
+      db_user: appproxy
       tag: ${{ inputs.tag }}
+      params: --set frontend.enabled=false --set crunchy.enabled=false
 
   tests:
     name: Tests
@@ -47,24 +48,24 @@ jobs:
     secrets: inherit
     with:
       environment: prod
-      db_user: appproxy # appproxy is the user which works with pgbouncer.
+      db_user: appproxy
       params:
         --set backend.deploymentStrategy=RollingUpdate
-        --set frontend.deploymentStrategy=RollingUpdate
         --set global.autoscaling=true
-        --set frontend.pdb.enabled=true
         --set backend.pdb.enabled=true
+        --set frontend.enabled=false
+        --set crunchy.enabled=false
       tag: ${{ inputs.tag }}
 
   promote:
     name: Promote Images
     needs: [deploy-prod]
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
     strategy:
       matrix:
-        package: [migrations, backend, frontend]
+        package: [backend]  # Only backend for now
     timeout-minutes: 1
     steps:
       - uses: shrink/actions-docker-registry-tag@f04afd0559f66b288586792eb150f45136a927fa # v4

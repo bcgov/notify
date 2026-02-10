@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        package: [backend, frontend, migrations]
+        package: [backend]  # Only backend for now (no frontend/migrations yet)
     timeout-minutes: 10
     steps:
       - uses: bcgov/action-builder-ghcr@2b24ac7f95e6a019064151498660437cca3202c5 # v4.2.1
@@ -39,21 +39,21 @@ jobs:
       oc_token: ${{ secrets.OC_TOKEN }}
     with:
       db_user: app-${{ github.event.number }}
-      params: --set global.secrets.persist=false
-      triggers: ('backend/' 'frontend/' 'migrations/' 'charts/' '.github/workflows/.deployer.yml')
+      params: --set global.secrets.persist=false --set frontend.enabled=false --set crunchy.enabled=false
+      triggers: ('backend/' 'charts/' '.github/workflows/.deployer.yml')
       db_triggers: ('charts/crunchy/')
 
   tests:
-     name: Tests
-     if: needs.deploys.outputs.triggered == 'true'
-     needs: [deploys]
-     uses: ./.github/workflows/.tests.yml
+    name: Tests
+    if: needs.deploys.outputs.triggered == 'true'
+    needs: [deploys]
+    uses: ./.github/workflows/.tests.yml
 
   results:
     name: PR Results
     needs: [builds, deploys, tests]
     if: always()
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-24.04
     steps:
       - if: contains(needs.*.result, 'failure')||contains(needs.*.result, 'canceled')
         run: echo "At least one job has failed." && exit 1
