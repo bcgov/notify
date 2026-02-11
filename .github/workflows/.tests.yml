@@ -18,6 +18,7 @@ permissions: {}
 jobs:
   integration-tests:
     name: Integration
+    if: false  # Disabled — tests/integration directory does not exist yet
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
@@ -42,6 +43,7 @@ jobs:
 
   e2e-tests:
     name: E2E
+    if: false  # Disabled — no frontend yet
     defaults:
       run:
         working-directory: frontend
@@ -81,6 +83,7 @@ jobs:
 
   load-tests:
     name: Load
+    if: false  # Disabled — test files do not exist yet (tests/load/)
     runs-on: ubuntu-24.04
     strategy:
       matrix:
