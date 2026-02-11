@@ -52,6 +52,11 @@ on:
         description: Paths used to trigger a database deployment; e.g. ('charts/crunchy/')
         required: false
         type: string
+      db_enabled:
+        description: Deploy the database? Set to true when CrunchyDB is needed.
+        default: false
+        required: false
+        type: boolean
 
       ### Usually a bad idea / not recommended
       timeout-minutes:
@@ -92,7 +97,8 @@ jobs:
       tag: ${{ inputs.tag || steps.pr.outputs.pr }}
       triggered: ${{ steps.deploy.outputs.triggered }}
     steps:
-      - uses: bcgov/action-crunchy@a109166ff26880dc75676492a33b816ac0ce392f # v1.2.6
+      - if: inputs.db_enabled == true
+        uses: bcgov/action-crunchy@a109166ff26880dc75676492a33b816ac0ce392f # v1.2.6
         name: Deploy Crunchy
         id: deploy_crunchy
         with:
