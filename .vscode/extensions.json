@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-azuretools.vscode-docker",
+    "ckolkman.vscode-postgres",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "eamodio.gitlens",
+    "humao.rest-client"
+  ]
+}

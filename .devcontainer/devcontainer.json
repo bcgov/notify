@@ -1,0 +1,58 @@
+{
+  "name": "BC Notify",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+
+  // ── Dev container features (multi-arch aware) ────────────────────────────
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "minikube": "none"
+    }
+  },
+
+  // ── Port forwarding ──────────────────────────────────────────────────────
+  "forwardPorts": [3000, 5432],
+  "portsAttributes": {
+    "3000": { "label": "Backend API", "onAutoForward": "notify" },
+    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" }
+  },
+
+  // ── VS Code customizations ──────────────────────────────────────────────
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "ckolkman.vscode-postgres",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "eamodio.gitlens",
+        "humao.rest-client"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "files.eol": "\n",
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "typescript.preferences.importModuleSpecifier": "relative",
+        "[markdown]": {
+          "files.trimTrailingWhitespace": false
+        }
+      }
+    }
+  },
+
+  // ── Lifecycle commands ───────────────────────────────────────────────────
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteUser": "node"
+}
