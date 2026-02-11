@@ -16,6 +16,7 @@ spec:
               network.openshift.io/policy-group: ingress
   policyTypes:
     - Ingress
+{{- if .Values.global.databaseAlias }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -37,6 +38,27 @@ spec:
               app.kubernetes.io/instance: {{ .Release.Name }}
   policyTypes:
     - Ingress
+{{- end }}
+{{- if and .Values.backend.enabled .Values.backend.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-openshift-ingress-to-backend
+  labels: {{- include "selectorLabels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ template "backend.name" }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              network.openshift.io/policy-group: ingress
+  policyTypes:
+    - Ingress
+{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
