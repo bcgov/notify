@@ -26,6 +26,9 @@ global:
 backend:
   #-- enable or disable backend
   enabled: true
+  #-- enable or disable Flyway database migrations init container. Set to false for stateless deployments.
+  migrations:
+    enabled: true
   #-- the deployment strategy, can be "Recreate" or "RollingUpdate"
   deploymentStrategy: Recreate
   #-- autoscaling for the component. it is optional and is an object.
