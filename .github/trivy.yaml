@@ -2,6 +2,9 @@
 # This file configures Trivy to properly scan Helm charts by providing values
 # so templates can be rendered and validated against actual registry values.
 
+skip-dirs:
+  - .devcontainer
+
 misconfiguration:
   helm:
     # Provide Helm values file so Trivy can render templates and verify

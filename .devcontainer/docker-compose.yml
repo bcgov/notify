@@ -1,21 +1,6 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - ..:/workspace:cached
-    command: sleep infinity
-    environment:
-      - NODE_ENV=development
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - notify-dev
-
   db:
-    image: postgis/postgis:17-3.4
+    image: postgres:17
     restart: unless-stopped
     volumes:
       - pgdata:/var/lib/postgresql/data

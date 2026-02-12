@@ -1,8 +1,16 @@
 {
   "name": "BC Notify",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
   "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "workspaceFolder": "/workspace",
+
+  "containerEnv": {
+    "NODE_ENV": "development"
+  },
 
   // ── Dev container features (multi-arch aware) ────────────────────────────
   "features": {
