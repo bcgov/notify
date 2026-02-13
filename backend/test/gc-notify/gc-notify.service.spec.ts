@@ -2,19 +2,27 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { GcNotifyService } from '../../src/gc-notify/gc-notify.service';
-import { InMemoryTemplateStore } from '../../src/gc-notify/transports/in-memory-template.store';
-import { InMemoryTemplateResolver } from '../../src/gc-notify/transports/in-memory-template.resolver';
-import { HandlebarsTemplateRenderer } from '../../src/gc-notify/transports/handlebars/handlebars-template.renderer';
-import { EMAIL_TRANSPORT, SMS_TRANSPORT } from '../../src/transports/tokens';
+import { InMemoryTemplateStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-template.store';
+import { InMemoryTemplateResolver } from '../../src/adapters/implementations/template/resolver/in-memory/in-memory-template.resolver';
+import { HandlebarsTemplateRenderer } from '../../src/adapters/implementations/template/renderer/handlebars/handlebars-template.renderer';
+import { Jinja2TemplateRenderer } from '../../src/adapters/implementations/template/renderer/jinja2/jinja2-template.renderer';
+import { NunjucksTemplateRenderer } from '../../src/adapters/implementations/template/renderer/nunjucks/nunjucks-template.renderer';
+import { EjsTemplateRenderer } from '../../src/adapters/implementations/template/renderer/ejs/ejs-template.renderer';
+import { TemplateRendererRegistry } from '../../src/adapters/implementations/template/renderer-registry';
+import { EMAIL_ADAPTER, SMS_ADAPTER } from '../../src/adapters/tokens';
 import {
   TEMPLATE_RESOLVER,
-  TEMPLATE_RENDERER,
-} from '../../src/gc-notify/transports/tokens';
+  TEMPLATE_RENDERER_REGISTRY,
+  DEFAULT_TEMPLATE_ENGINE,
+  SENDER_STORE,
+} from '../../src/adapters/tokens';
+import { InMemorySenderStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-sender.store';
 import type {
   IEmailTransport,
   ISmsTransport,
-} from '../../src/transports/interfaces';
-import type { StoredTemplate } from '../../src/gc-notify/transports/in-memory-template.store';
+  ITemplateRendererRegistry,
+} from '../../src/adapters/interfaces';
+import type { StoredTemplate } from '../../src/adapters/interfaces';
 
 function createEmailTemplate(
   overrides: Partial<StoredTemplate> = {},
@@ -56,6 +64,8 @@ describe('GcNotifyService', () => {
   let smsTransport: jest.Mocked<ISmsTransport>;
   let configGetMock: jest.Mock;
 
+  let rendererRegistry: ITemplateRendererRegistry;
+
   beforeEach(async () => {
     emailTransport = {
       send: jest.fn().mockResolvedValue({ messageId: 'msg-1' }),
@@ -69,17 +79,32 @@ describe('GcNotifyService', () => {
       return undefined;
     });
 
+    const handlebarsRenderer = new HandlebarsTemplateRenderer();
+    const jinja2Renderer = new Jinja2TemplateRenderer(
+      new NunjucksTemplateRenderer(),
+    );
+    const ejsRenderer = new EjsTemplateRenderer();
+    rendererRegistry = new TemplateRendererRegistry(
+      [
+        { engine: 'handlebars', instance: handlebarsRenderer },
+        { engine: 'jinja2', instance: jinja2Renderer },
+        { engine: 'ejs', instance: ejsRenderer },
+      ],
+      'jinja2',
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GcNotifyService,
         InMemoryTemplateStore,
         InMemoryTemplateResolver,
-        HandlebarsTemplateRenderer,
         { provide: ConfigService, useValue: { get: configGetMock } },
-        { provide: EMAIL_TRANSPORT, useValue: emailTransport },
-        { provide: SMS_TRANSPORT, useValue: smsTransport },
+        { provide: EMAIL_ADAPTER, useValue: emailTransport },
+        { provide: SMS_ADAPTER, useValue: smsTransport },
         { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
-        { provide: TEMPLATE_RENDERER, useClass: HandlebarsTemplateRenderer },
+        { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
+        { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
+        { provide: SENDER_STORE, useClass: InMemorySenderStore },
       ],
     }).compile();
 
@@ -136,6 +161,52 @@ describe('GcNotifyService', () => {
         template_id: 't-sms',
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('sendEmail uses template.engine when present', async () => {
+    templateStore.set('t-email', createEmailTemplate({ engine: 'handlebars' }));
+
+    const result = await service.sendEmail({
+      email_address: 'user@example.com',
+      template_id: 't-email',
+      personalisation: { name: 'Alice' },
+    });
+
+    expect(result.content.subject).toBe('Hi Alice');
+    expect(result.content.body).toBe('Hello Alice');
+  });
+
+  it('sendEmail falls back to default engine when template has no engine', async () => {
+    templateStore.set('t-email', createEmailTemplate());
+
+    const result = await service.sendEmail({
+      email_address: 'user@example.com',
+      template_id: 't-email',
+      personalisation: { name: 'Bob' },
+    });
+
+    expect(result.content.subject).toBe('Hi Bob');
+    expect(result.content.body).toBe('Hello Bob');
+  });
+
+  it('sendEmail uses EJS engine when template specifies engine: ejs', async () => {
+    templateStore.set(
+      't-email',
+      createEmailTemplate({
+        engine: 'ejs',
+        subject: 'Hi <%= name %>',
+        body: 'Hello <%= name %>',
+      }),
+    );
+
+    const result = await service.sendEmail({
+      email_address: 'user@example.com',
+      template_id: 't-email',
+      personalisation: { name: 'Carol' },
+    });
+
+    expect(result.content.subject).toBe('Hi Carol');
+    expect(result.content.body).toBe('Hello Carol');
   });
 
   it('sendSms returns NotificationResponse with id, content, uri, template', async () => {
@@ -308,6 +379,18 @@ describe('GcNotifyService', () => {
     expect(result.id).toBeDefined();
     expect(result.name).toBe('Welcome');
     expect(result.body).toBe('Hello');
+  });
+
+  it('createTemplate persists engine when provided', async () => {
+    const result = await service.createTemplate({
+      name: 'Welcome',
+      type: 'email',
+      body: 'Hello {{name}}',
+      subject: 'Hi',
+      engine: 'handlebars',
+    });
+
+    expect(result.engine).toBe('handlebars');
   });
 
   it('updateTemplate returns updated template', async () => {

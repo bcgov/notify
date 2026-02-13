@@ -4,8 +4,8 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # Web UI
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
     networks:
       - notify-dev
 
@@ -15,9 +15,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: notify
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-notify}
     ports:
       - "5432:5432"
     healthcheck:

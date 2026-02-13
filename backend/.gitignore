@@ -8,6 +8,7 @@ dist/
 .env
 .env.local
 .env.*.local
+test/e2e/env.staging
 
 # IDE
 .vscode/

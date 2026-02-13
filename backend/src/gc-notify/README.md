@@ -1,6 +1,6 @@
 # GC Notify
 
-GC Notify–compatible API for template-based email and SMS notifications. Sends via shared [transports](../transports/README.md); template resolution and rendering are gc-notify–specific.
+GC Notify–compatible API for template-based email and SMS notifications. Sends via shared [adapters](../adapters/README.md); template resolution and rendering use adapters from the same module.
 
 ## Core vs Contrib
 
@@ -22,21 +22,32 @@ GC Notify–compatible API for template-based email and SMS notifications. Sends
 **Contrib** (`v2/contrib/`) – Management API (not in official GC Notify spec):
 
 - Senders: `GET/POST/PUT/DELETE /gc-notify/v2/notifications/senders`
-- Templates: `POST/PUT/DELETE /gc-notify/v2/templates`, `/template/:id`
+- Templates: `POST /gc-notify/v2/templates`, `PUT /gc-notify/v2/template/:id`, `DELETE /gc-notify/v2/template/:id`
 
-## GC-Specific Transports
+## GC-Specific Adapters
 
-Template infrastructure lives under `transports/` (distinct from shared email/SMS transports):
+Template and sender infrastructure lives in [adapters](../adapters/README.md) (delivery, template, storage):
 
 | Component | Default | Purpose |
 |-----------|---------|---------|
 | **Template resolver** | `InMemoryTemplateResolver` | Resolve template by ID |
-| **Template renderer** | `HandlebarsTemplateRenderer` | Render template + personalisation |
+| **Template renderers** | `{ handlebars, jinja2, ejs, mustache, nunjucks }` | Registry of engine → renderer |
+| **Default template engine** | `jinja2` | Engine used when template has no `engine` |
 | **Template store** | `InMemoryTemplateStore` | In-memory template storage |
+| **Sender store** | `InMemorySenderStore` | In-memory sender storage (reply-to, SMS sender) |
 
-Flow: request → template ID + personalisation → resolver fetches template → renderer produces subject/body → shared email/SMS transport sends.
+Flow: request → template ID + personalisation → resolver fetches template → engine resolved (`template.engine ?? default`) → registry returns renderer → subject/body produced → shared email/SMS adapter sends. Senders (email reply-to, SMS sender ID) are resolved from the sender store.
 
-To swap implementations, pass `templateResolver` and `templateRenderer` to `GcNotifyModule.forRoot()`.
+To swap implementations, pass options to `GcNotifyModule.forRoot()`:
+
+```ts
+GcNotifyModule.forRoot({
+  templateResolver: CustomTemplateResolver,
+  templateRenderers: { handlebars: HandlebarsTemplateRenderer, jinja2: Jinja2TemplateRenderer },
+  defaultTemplateEngine: 'jinja2',  // or from config.gcNotify.defaultTemplateEngine
+  senderStore: CustomSenderStore,  // e.g. database-backed
+})
+```
 
 ## Structure
 
@@ -44,11 +55,6 @@ To swap implementations, pass `templateResolver` and `templateRenderer` to `GcNo
 gc-notify/
 ├── gc-notify.service.ts      # Business logic
 ├── gc-notify.module.ts       # Module wiring
-├── transports/               # GC-specific (template resolution)
-│   ├── interfaces/           # ITemplateResolver, ITemplateRenderer
-│   ├── handlebars/           # HandlebarsTemplateRenderer
-│   ├── in-memory-template.resolver.ts
-│   └── in-memory-template.store.ts
 ├── v2/core/                  # GC Notify API (notifications, templates read)
 │   ├── gc-notify-api.module.ts
 │   ├── gc-notify.controller.ts
@@ -59,7 +65,9 @@ gc-notify/
     └── schemas/
 ```
 
+Adapters (template resolver, renderer, storage) live in [../adapters/](../adapters/README.md).
+
 ## Dependencies
 
-- **Shared transports** – Email/SMS delivery via [TransportsModule](../transports/README.md) (nodemailer, twilio, etc.)
+- **Shared adapters** – Email/SMS delivery via [AdaptersModule](../adapters/README.md) (nodemailer, twilio, etc.)
 - **Config** – Nodemailer and Twilio settings from `configuration.ts`

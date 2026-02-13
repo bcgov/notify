@@ -53,4 +53,12 @@ export class CreateTemplateRequest {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Template engine (handlebars, jinja2, etc.). Defaults to module default when absent.',
+  })
+  @IsOptional()
+  @IsString()
+  engine?: string;
 }

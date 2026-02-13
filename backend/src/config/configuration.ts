@@ -38,9 +38,16 @@ export default () => ({
     apiKey: process.env.API_KEY,
   },
 
-  // GC Notify transports (nodemailer, twilio - add more as implemented)
-  transport: {
-    email: process.env.EMAIL_TRANSPORT || 'nodemailer',
-    sms: process.env.SMS_TRANSPORT || 'twilio',
+  // GC Notify adapters (delivery, template, storage)
+  delivery: {
+    email:
+      process.env.EMAIL_ADAPTER || process.env.EMAIL_TRANSPORT || 'nodemailer',
+    sms: process.env.SMS_ADAPTER || process.env.SMS_TRANSPORT || 'twilio',
+  },
+
+  // GC Notify template engine
+  gcNotify: {
+    defaultTemplateEngine:
+      process.env.GC_NOTIFY_DEFAULT_TEMPLATE_ENGINE || 'jinja2',
   },
 });

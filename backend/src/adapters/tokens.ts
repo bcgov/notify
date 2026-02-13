@@ -1,0 +1,7 @@
+export const EMAIL_ADAPTER = Symbol('EMAIL_ADAPTER');
+export const SMS_ADAPTER = Symbol('SMS_ADAPTER');
+export const TEMPLATE_RESOLVER = Symbol('TEMPLATE_RESOLVER');
+export const TEMPLATE_RENDERER_REGISTRY = Symbol('TEMPLATE_RENDERER_REGISTRY');
+export const DEFAULT_TEMPLATE_ENGINE = Symbol('DEFAULT_TEMPLATE_ENGINE');
+export const TEMPLATE_STORE = Symbol('TEMPLATE_STORE');
+export const SENDER_STORE = Symbol('SENDER_STORE');

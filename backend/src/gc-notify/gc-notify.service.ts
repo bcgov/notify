@@ -25,36 +25,39 @@ import {
   CreateTemplateRequest,
   UpdateTemplateRequest,
 } from './v2/contrib/schemas';
-import type { IEmailTransport, ISmsTransport } from '../transports/interfaces';
+import type { IEmailTransport, ISmsTransport } from '../adapters/interfaces';
 import type {
   ITemplateResolver,
-  ITemplateRenderer,
-} from './transports/interfaces';
-import { EMAIL_TRANSPORT, SMS_TRANSPORT } from '../transports/tokens';
-import { TEMPLATE_RESOLVER, TEMPLATE_RENDERER } from './transports/tokens';
-import { InMemoryTemplateStore } from './transports/in-memory-template.store';
-import type { StoredTemplate } from './transports/in-memory-template.store';
+  ITemplateRendererRegistry,
+  ISenderStore,
+  StoredSender,
+} from '../adapters/interfaces';
+import { EMAIL_ADAPTER, SMS_ADAPTER } from '../adapters/tokens';
+import {
+  TEMPLATE_RESOLVER,
+  TEMPLATE_RENDERER_REGISTRY,
+  DEFAULT_TEMPLATE_ENGINE,
+  SENDER_STORE,
+} from '../adapters/tokens';
+import { InMemoryTemplateStore } from '../adapters/implementations/storage/in-memory/in-memory-template.store';
+import type { StoredTemplate } from '../adapters/interfaces';
 import { FileAttachment } from './v2/core/schemas';
-
-interface StoredSender extends Sender {
-  id: string;
-}
 
 @Injectable()
 export class GcNotifyService {
   private readonly logger = new Logger(GcNotifyService.name);
 
-  private readonly senders = new Map<string, StoredSender>();
-
   constructor(
     private readonly configService: ConfigService,
     private readonly templateStore: InMemoryTemplateStore,
-    @Inject(EMAIL_TRANSPORT) private readonly emailTransport: IEmailTransport,
-    @Inject(SMS_TRANSPORT) private readonly smsTransport: ISmsTransport,
+    @Inject(EMAIL_ADAPTER) private readonly emailTransport: IEmailTransport,
+    @Inject(SMS_ADAPTER) private readonly smsTransport: ISmsTransport,
     @Inject(TEMPLATE_RESOLVER)
     private readonly templateResolver: ITemplateResolver,
-    @Inject(TEMPLATE_RENDERER)
-    private readonly templateRenderer: ITemplateRenderer,
+    @Inject(TEMPLATE_RENDERER_REGISTRY)
+    private readonly rendererRegistry: ITemplateRendererRegistry,
+    @Inject(DEFAULT_TEMPLATE_ENGINE) private readonly defaultEngine: string,
+    @Inject(SENDER_STORE) private readonly senderStore: ISenderStore,
   ) {}
 
   async getNotifications(query: {
@@ -100,7 +103,9 @@ export class GcNotifyService {
     }
 
     const personalisation = this.normalizePersonalisation(body.personalisation);
-    const rendered = this.templateRenderer.renderEmail({
+    const engine = template.engine ?? this.defaultEngine;
+    const renderer = this.rendererRegistry.getRenderer(engine);
+    const rendered = renderer.renderEmail({
       template,
       personalisation,
     });
@@ -159,7 +164,9 @@ export class GcNotifyService {
     }
 
     const personalisation = body.personalisation ?? {};
-    const rendered = this.templateRenderer.renderSms({
+    const engine = template.engine ?? this.defaultEngine;
+    const renderer = this.rendererRegistry.getRenderer(engine);
+    const rendered = renderer.renderSms({
       template,
       personalisation,
     });
@@ -222,28 +229,28 @@ export class GcNotifyService {
   private async resolveEmailSender(
     senderId?: string,
   ): Promise<StoredSender | null> {
-    await Promise.resolve();
     if (senderId) {
-      const sender = this.senders.get(senderId);
-      return sender ?? null;
+      return this.senderStore.getById(senderId);
     }
-    const defaultSender = Array.from(this.senders.values()).find(
-      (s) => (s.type === 'email' || s.type === 'email+sms') && s.is_default,
-    );
+    const defaultSender = this.senderStore
+      .getAll()
+      .find(
+        (s) => (s.type === 'email' || s.type === 'email+sms') && s.is_default,
+      );
     return defaultSender ?? null;
   }
 
   private async resolveSmsSender(
     senderId?: string,
   ): Promise<StoredSender | null> {
-    await Promise.resolve();
     if (senderId) {
-      const sender = this.senders.get(senderId);
-      return sender ?? null;
+      return this.senderStore.getById(senderId);
     }
-    const defaultSender = Array.from(this.senders.values()).find(
-      (s) => (s.type === 'sms' || s.type === 'email+sms') && s.is_default,
-    );
+    const defaultSender = this.senderStore
+      .getAll()
+      .find(
+        (s) => (s.type === 'sms' || s.type === 'email+sms') && s.is_default,
+      );
     return defaultSender ?? null;
   }
 
@@ -306,7 +313,7 @@ export class GcNotifyService {
   ): Promise<{ senders: Sender[] }> {
     this.logger.log('Getting senders list');
     await Promise.resolve();
-    let senders = Array.from(this.senders.values());
+    let senders = this.senderStore.getAll();
     if (type) {
       senders = senders.filter(
         (s) => s.type === type || s.type === 'email+sms',
@@ -317,8 +324,7 @@ export class GcNotifyService {
 
   async getSender(senderId: string): Promise<Sender> {
     this.logger.log(`Getting sender: ${senderId}`);
-    await Promise.resolve();
-    const sender = this.senders.get(senderId);
+    const sender = await this.senderStore.getById(senderId);
     if (!sender) {
       throw new NotFoundException('Sender not found');
     }
@@ -339,7 +345,7 @@ export class GcNotifyService {
       created_at: now,
       updated_at: now,
     };
-    this.senders.set(id, sender);
+    this.senderStore.set(id, sender);
     this.logger.log(`Created sender: ${id}`);
     return sender;
   }
@@ -348,8 +354,7 @@ export class GcNotifyService {
     senderId: string,
     body: UpdateSenderRequest,
   ): Promise<Sender> {
-    await Promise.resolve();
-    const existing = this.senders.get(senderId);
+    const existing = await this.senderStore.getById(senderId);
     if (!existing) {
       throw new NotFoundException('Sender not found');
     }
@@ -360,17 +365,17 @@ export class GcNotifyService {
       ...body,
       updated_at: new Date().toISOString(),
     };
-    this.senders.set(senderId, updated);
+    this.senderStore.set(senderId, updated);
     this.logger.log(`Updated sender: ${senderId}`);
     return updated;
   }
 
   async deleteSender(senderId: string): Promise<void> {
     await Promise.resolve();
-    if (!this.senders.has(senderId)) {
+    if (!this.senderStore.has(senderId)) {
       throw new NotFoundException('Sender not found');
     }
-    this.senders.delete(senderId);
+    this.senderStore.delete(senderId);
     this.logger.log(`Deleted sender: ${senderId}`);
   }
 
@@ -406,6 +411,7 @@ export class GcNotifyService {
       body: body.body,
       personalisation: body.personalisation,
       active: body.active ?? true,
+      engine: body.engine,
       created_at: now,
       updated_at: now,
       version: 1,

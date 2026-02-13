@@ -7,30 +7,24 @@
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
 
-  // ── Container env (Nodemailer → Mailpit, etc.) ───────────────────────────
-  "containerEnv": {
-    "NODE_ENV": "development",
-    "EMAIL_TRANSPORT": "nodemailer",
-    "SMS_TRANSPORT": "twilio",
-    "NODEMAILER_HOST": "mailpit",
-    "NODEMAILER_PORT": "1025",
-    "NODEMAILER_FROM": "noreply@localhost"
-  },
+  // ── Container env (from sample.env.local) ───────────────────────────────────
+  "runArgs": ["--env-file", "${localWorkspaceFolder}/.devcontainer/sample.env.local"],
 
   // ── Dev container features (multi-arch aware) ────────────────────────────
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
       "minikube": "none"
     }
   },
 
-  // ── Port forwarding ──────────────────────────────────────────────────────
-  "forwardPorts": [3000, 5432, 8025],
+  // ── Port forwarding (DinD sidecars publish to devcontainer localhost) ─────
+  "forwardPorts": [3000, 5432, 1025, 8025],
   "portsAttributes": {
     "3000": { "label": "Backend API", "onAutoForward": "notify" },
     "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "1025": { "label": "Mailpit SMTP", "onAutoForward": "silent" },
     "8025": { "label": "Mailpit (Email UI)", "onAutoForward": "silent" }
   },
 

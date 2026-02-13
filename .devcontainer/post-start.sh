@@ -2,15 +2,19 @@
 set -e
 
 echo "══════════════════════════════════════════════════════════════"
-echo "  Starting sidecar services (mailpit, postgres)"
+echo "  Starting sidecar services (mailpit, postgres) — DinD"
 echo "══════════════════════════════════════════════════════════════"
 
 cd /workspace
+
+# Ensure .env exists for docker-compose (variable substitution)
+cp .devcontainer/sample.env.local .devcontainer/.env
+
+# DinD: sidecars run inside devcontainer; ports publish to localhost
 docker compose -f .devcontainer/docker-compose.yml up -d
 
-# Connect this dev container to the sidecar network so we can reach mailpit and db
-CONTAINER_ID=$(cat /etc/hostname)
-docker network connect notify-dev "$CONTAINER_ID" 2>/dev/null || true
+# Copy sample.env.local to backend/.env for running against devcontainer
+cp .devcontainer/sample.env.local backend/.env
 
-echo "  Sidecar services ready."
+echo "  Sidecar services ready (localhost:1025, localhost:5432, localhost:8025)."
 echo "══════════════════════════════════════════════════════════════"
