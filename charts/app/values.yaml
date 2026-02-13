@@ -26,6 +26,9 @@ global:
 backend:
   #-- enable or disable backend
   enabled: true
+  #-- enable or disable Flyway database migrations init container. Set to false for stateless deployments.
+  migrations:
+    enabled: true
   #-- the deployment strategy, can be "Recreate" or "RollingUpdate"
   deploymentStrategy: Recreate
   #-- autoscaling for the component. it is optional and is an object.
@@ -66,6 +69,11 @@ backend:
     type: ClusterIP
     port: 80 # this is the service port, where it will be exposed internal to the namespace.
     targetPort: 3000 # this is container port where app listens on
+  #-- ingress/route for the backend. Creates an OpenShift Route via Ingress resource. Set enabled to false to keep backend internal-only.
+  ingress:
+    enabled: true
+    annotations:
+      route.openshift.io/termination: "edge"
   pdb:
     enabled: false # enable it in PRODUCTION for having pod disruption budget.
     minAvailable: 1 # the minimum number of pods that must be available during the disruption budget.

@@ -39,7 +39,12 @@ jobs:
       oc_token: ${{ secrets.OC_TOKEN }}
     with:
       db_user: app-${{ github.event.number }}
-      params: --set global.secrets.persist=false --set frontend.enabled=false --set crunchy.enabled=false
+      params: >-
+        --set global.secrets.persist=false
+        --set global.secrets.enabled=false
+        --set frontend.enabled=false
+        --set crunchy.enabled=false
+        --set backend.migrations.enabled=false
       triggers: ('backend/' 'charts/' '.github/workflows/.deployer.yml')
       db_triggers: ('charts/crunchy/')
 

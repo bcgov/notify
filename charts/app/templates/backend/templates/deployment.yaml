@@ -27,6 +27,7 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+      {{- if .Values.backend.migrations.enabled }}
       initContainers:
         - name: {{ include "backend.fullname" . }}-init
           securityContext:
@@ -54,6 +55,7 @@ spec:
             limits:
               cpu: 4
               memory: 8Gi
+      {{- end }}
       containers:
         - name: {{ include "backend.fullname" . }}
           securityContext:
@@ -62,9 +64,11 @@ spec:
             allowPrivilegeEscalation: false
           image: "{{ .Values.global.registry | default "ghcr.io" }}/{{.Values.global.repository}}/backend:{{ .Values.global.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ default "Always" .Values.backend.imagePullPolicy }}
+          {{- if and .Values.global.secrets .Values.global.secrets.enabled }}
           envFrom:
             - secretRef:
                 name: {{.Release.Name}}-backend
+          {{- end }}
           env:
             - name: LOG_LEVEL
               value: info
@@ -74,7 +78,7 @@ spec:
               protocol: TCP
           startupProbe:
             httpGet:
-              path: /api/health
+              path: /health/ready
               port: http
               scheme: HTTP
             initialDelaySeconds: 5
@@ -84,7 +88,7 @@ spec:
             failureThreshold: 10
           readinessProbe:
             httpGet:
-              path: /api/health
+              path: /health/ready
               port: http
               scheme: HTTP
             initialDelaySeconds: 5
@@ -96,7 +100,7 @@ spec:
             successThreshold: 1
             failureThreshold: 3
             httpGet:
-              path: /api/health
+              path: /health/live
               port: http
               scheme: HTTP
             initialDelaySeconds: 15
