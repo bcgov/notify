@@ -1,0 +1,175 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  Query,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiSecurity,
+  ApiQuery,
+  ApiExtraModels,
+} from '@nestjs/swagger';
+import { GcNotifyService } from '../../gc-notify.service';
+import { ApiKeyGuard } from '../../../common/guards';
+import {
+  CreateEmailNotificationRequest,
+  CreateSmsNotificationRequest,
+  NotificationResponse,
+  Notification,
+  Template,
+  PostBulkRequest,
+  PostBulkResponse,
+  EmailContent,
+  SmsContent,
+  NotificationsListResponse,
+  TemplatesListResponse,
+  FileAttachment,
+} from './schemas';
+
+@ApiTags('GC Notify')
+@ApiExtraModels(EmailContent, SmsContent, FileAttachment)
+@ApiSecurity('api-key')
+@UseGuards(ApiKeyGuard)
+@Controller('gc-notify/v2')
+export class GcNotifyController {
+  constructor(private readonly gcNotifyService: GcNotifyService) {}
+
+  @Get('notifications')
+  @ApiOperation({ summary: 'Get list of notifications' })
+  @ApiQuery({ name: 'template_type', required: false, enum: ['sms', 'email'] })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    schema: {
+      type: 'array',
+      items: {
+        type: 'string',
+        enum: [
+          'created',
+          'in-transit',
+          'pending',
+          'sent',
+          'delivered',
+          'failed',
+        ],
+      },
+    },
+  })
+  @ApiQuery({ name: 'reference', required: false })
+  @ApiQuery({ name: 'older_than', required: false, description: 'UUID' })
+  @ApiQuery({ name: 'include_jobs', required: false, type: Boolean })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved notifications',
+    type: NotificationsListResponse,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getNotifications(
+    @Query('template_type') templateType?: 'sms' | 'email',
+    @Query('status') status?: string | string[],
+    @Query('reference') reference?: string,
+    @Query('older_than') olderThan?: string,
+    @Query('include_jobs') includeJobs?: boolean,
+  ) {
+    const statusArray = Array.isArray(status)
+      ? status
+      : status
+        ? [status]
+        : undefined;
+    return this.gcNotifyService.getNotifications({
+      template_type: templateType,
+      status: statusArray,
+      reference,
+      older_than: olderThan,
+      include_jobs: includeJobs,
+    });
+  }
+
+  @Post('notifications/email')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Send an email notification' })
+  @ApiResponse({
+    status: 201,
+    description: 'Email notification created successfully',
+    type: NotificationResponse,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
+  async sendEmail(@Body() body: CreateEmailNotificationRequest) {
+    return this.gcNotifyService.sendEmail(body);
+  }
+
+  @Post('notifications/sms')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Send an SMS notification' })
+  @ApiResponse({
+    status: 201,
+    description: 'SMS notification created successfully',
+    type: NotificationResponse,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
+  async sendSms(@Body() body: CreateSmsNotificationRequest) {
+    return this.gcNotifyService.sendSms(body);
+  }
+
+  @Post('notifications/bulk')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Send a batch of notifications' })
+  @ApiResponse({
+    status: 201,
+    description: 'Bulk job created successfully',
+    type: PostBulkResponse,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  async sendBulk(@Body() body: PostBulkRequest) {
+    return this.gcNotifyService.sendBulk(body);
+  }
+
+  @Get('notifications/:notificationId')
+  @ApiOperation({ summary: 'Get notification by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification retrieved successfully',
+    type: Notification,
+  })
+  @ApiResponse({ status: 404, description: 'Notification not found' })
+  async getNotificationById(@Param('notificationId') notificationId: string) {
+    return this.gcNotifyService.getNotificationById(notificationId);
+  }
+
+  @Get('templates')
+  @ApiOperation({ summary: 'Get list of templates' })
+  @ApiQuery({ name: 'type', required: false, enum: ['sms', 'email'] })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved templates',
+    type: TemplatesListResponse,
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getTemplates(@Query('type') type?: 'sms' | 'email') {
+    return this.gcNotifyService.getTemplates(type);
+  }
+
+  @Get('template/:templateId')
+  @ApiOperation({ summary: 'Get template by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Template retrieved successfully',
+    type: Template,
+  })
+  @ApiResponse({ status: 404, description: 'Template not found' })
+  async getTemplate(@Param('templateId') templateId: string) {
+    return this.gcNotifyService.getTemplate(templateId);
+  }
+}

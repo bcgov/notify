@@ -17,7 +17,12 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e:integration": "jest --config ./test/jest-e2e-integration.json",
+    "test:e2e:local": "E2E_ENV_FILE=test/e2e/env.local npm run test:e2e:integration",
+    "test:e2e:staging": "E2E_ENV_FILE=test/e2e/env.staging npm run test:e2e:integration",
+    "demo": "npx ts-node scripts/demo/business-scenario.ts",
+    "demo:staging": "DEMO_ENV_FILE=test/e2e/env.staging npx ts-node scripts/demo/business-scenario.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -27,8 +32,14 @@
     "@nestjs/swagger": "^11.2.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
+    "ejs": "^4.0.1",
+    "handlebars": "^4.7.8",
+    "mustache": "^4.2.0",
+    "nodemailer": "^7.0.11",
+    "nunjucks": "^3.2.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "twilio": "^5.3.4",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -37,11 +48,16 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/ejs": "^3.1.5",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/mustache": "^4.2.6",
     "@types/node": "^22.10.7",
+    "@types/nodemailer": "^7.0.0",
+    "@types/nunjucks": "^3.2.6",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
+    "dotenv": "^17.3.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -63,15 +79,24 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "testMatch": [
+      "**/*.spec.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "\\.e2e-spec\\.ts$"
+    ],
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
+    "transformIgnorePatterns": [
+      "/node_modules/(?!uuid/)"
     ],
-    "coverageDirectory": "../coverage",
+    "collectCoverageFrom": [
+      "src/**/*.(t|j)s"
+    ],
+    "coverageDirectory": "./coverage",
     "testEnvironment": "node"
   }
 }

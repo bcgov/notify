@@ -1,23 +1,31 @@
 {
   "name": "BC Notify",
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
   "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+
+  // ── Container env (from sample.env.local) ───────────────────────────────────
+  "runArgs": ["--env-file", "${localWorkspaceFolder}/.devcontainer/sample.env.local"],
 
   // ── Dev container features (multi-arch aware) ────────────────────────────
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
       "minikube": "none"
     }
   },
 
-  // ── Port forwarding ──────────────────────────────────────────────────────
-  "forwardPorts": [3000, 5432],
+  // ── Port forwarding (DinD sidecars publish to devcontainer localhost) ─────
+  "forwardPorts": [3000, 5432, 1025, 8025],
   "portsAttributes": {
     "3000": { "label": "Backend API", "onAutoForward": "notify" },
-    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" }
+    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "1025": { "label": "Mailpit SMTP", "onAutoForward": "silent" },
+    "8025": { "label": "Mailpit (Email UI)", "onAutoForward": "silent" }
   },
 
   // ── VS Code customizations ──────────────────────────────────────────────
@@ -53,6 +61,7 @@
 
   // ── Lifecycle commands ───────────────────────────────────────────────────
   "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
 
   "remoteUser": "node"
 }

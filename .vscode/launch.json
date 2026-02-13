@@ -43,7 +43,7 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "test", "--", "--runInBand", "${relativeFile}"],
+      "runtimeArgs": ["run", "test", "--", "--runInBand", "${file}"],
       "cwd": "${workspaceFolder}/backend",
       "console": "integratedTerminal",
       "sourceMaps": true,
@@ -60,6 +60,17 @@
       "console": "integratedTerminal",
       "sourceMaps": true,
       "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Run E2E Integration (local)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "test:e2e:local", "--", "--runInBand"],
+      "cwd": "${workspaceFolder}/backend",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
       "skipFiles": ["<node_internals>/**"]
     }
   ]

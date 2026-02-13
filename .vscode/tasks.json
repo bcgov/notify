@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Kill port 3000",
+      "type": "shell",
+      "command": "pid=$(lsof -ti:3000 2>/dev/null); if [ -n \"$pid\" ]; then kill $pid 2>/dev/null && echo \"Killed process $pid on port 3000\" || echo \"Failed to kill process $pid on port 3000\"; else echo \"No process found on port 3000\"; fi",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    }
+  ]
+}

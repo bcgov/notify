@@ -1,9 +1,10 @@
 {
   "moduleFileExtensions": ["js", "json", "ts"],
-  "rootDir": ".",
+  "rootDir": "..",
+  "testMatch": ["**/*.e2e-spec.ts"],
   "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "transformIgnorePatterns": ["/node_modules/(?!uuid/)"]
 }

@@ -5,13 +5,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
   constructor(private readonly configService: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers['authorization'];
 
     if (!authHeader) {
@@ -19,7 +20,9 @@ export class ApiKeyGuard implements CanActivate {
     }
 
     // Support "ApiKey-v1 <key>" format (GC Notify style)
-    const [scheme, token] = authHeader.split(' ');
+    const parts = authHeader.split(' ');
+    const scheme = parts[0];
+    const token = parts[1];
 
     if (scheme !== 'ApiKey-v1' || !token) {
       throw new UnauthorizedException(
