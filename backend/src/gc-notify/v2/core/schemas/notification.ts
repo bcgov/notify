@@ -12,7 +12,10 @@ export class Notification {
   @ApiPropertyOptional({ description: 'Reference identifier' })
   reference?: string;
 
-  @ApiPropertyOptional({ description: 'Recipient email address', format: 'email' })
+  @ApiPropertyOptional({
+    description: 'Recipient email address',
+    format: 'email',
+  })
   email_address?: string;
 
   @ApiPropertyOptional({ description: 'Recipient phone number' })
@@ -82,10 +85,16 @@ export class Notification {
   @ApiPropertyOptional({ description: 'Sent timestamp', format: 'date-time' })
   sent_at?: string;
 
-  @ApiPropertyOptional({ description: 'Completed timestamp', format: 'date-time' })
+  @ApiPropertyOptional({
+    description: 'Completed timestamp',
+    format: 'date-time',
+  })
   completed_at?: string;
 
-  @ApiPropertyOptional({ description: 'Scheduled timestamp', format: 'date-time' })
+  @ApiPropertyOptional({
+    description: 'Scheduled timestamp',
+    format: 'date-time',
+  })
   scheduled_for?: string;
 
   @ApiPropertyOptional()

@@ -1,4 +1,10 @@
-import { IsEmail, IsString, IsOptional, IsObject, IsUUID } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  IsOptional,
+  IsObject,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendEmailDto {

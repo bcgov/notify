@@ -19,7 +19,8 @@ export class Sender {
   type: 'email' | 'sms' | 'email+sms';
 
   @ApiPropertyOptional({
-    description: 'Email address for reply-to (required when type is email or email+sms)',
+    description:
+      'Email address for reply-to (required when type is email or email+sms)',
     example: 'noreply@gov.bc.ca',
   })
   email_address?: string;

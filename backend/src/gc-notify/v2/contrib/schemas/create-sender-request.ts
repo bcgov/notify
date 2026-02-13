@@ -22,10 +22,13 @@ export class CreateSenderRequest {
   type: 'email' | 'sms' | 'email+sms';
 
   @ApiPropertyOptional({
-    description: 'Email address for reply-to (required when type is email or email+sms)',
+    description:
+      'Email address for reply-to (required when type is email or email+sms)',
     example: 'noreply@gov.bc.ca',
   })
-  @ValidateIf((o) => o.type === 'email' || o.type === 'email+sms')
+  @ValidateIf(
+    (o: CreateSenderRequest) => o.type === 'email' || o.type === 'email+sms',
+  )
   @IsEmail()
   email_address?: string;
 
@@ -37,10 +40,13 @@ export class CreateSenderRequest {
       e164: { summary: 'E.164 phone number', value: '+15551234567' },
     },
   })
-  @ValidateIf((o) => o.type === 'sms' || o.type === 'email+sms')
+  @ValidateIf(
+    (o: CreateSenderRequest) => o.type === 'sms' || o.type === 'email+sms',
+  )
   @IsString()
   @Matches(/^[\dA-Za-z+]{1,15}$/, {
-    message: 'SMS sender must be alphanumeric (max 11 chars) or E.164 phone number (max 15 chars)',
+    message:
+      'SMS sender must be alphanumeric (max 11 chars) or E.164 phone number (max 15 chars)',
   })
   sms_sender?: string;
 

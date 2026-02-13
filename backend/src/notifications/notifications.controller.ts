@@ -57,7 +57,9 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get notification status by ID' })
   @ApiResponse({ status: 200, description: 'Notification details' })
   @ApiResponse({ status: 404, description: 'Notification not found' })
-  async getNotification(@Param('id') id: string) {
+  async getNotification(
+    @Param('id') id: string,
+  ): Promise<NotificationResponseDto> {
     return this.notificationsService.getNotification(id);
   }
 }

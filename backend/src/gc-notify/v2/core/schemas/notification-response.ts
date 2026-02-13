@@ -1,4 +1,8 @@
-import { ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { NotificationTemplate } from './notification-template';
 import { EmailContent } from './email-content';
 import { SmsContent } from './sms-content';

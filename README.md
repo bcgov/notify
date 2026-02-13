@@ -1,2 +1,7 @@
 # notify
-Connected services notifications orchestration, default notifications settings and channel message distribution
+
+Connected services notifications orchestration, default notifications settings and channel message distribution.
+
+- [Dev container setup](.devcontainer/README.md)
+- [Transports (email/SMS)](backend/src/transports/README.md)
+- [GC Notify](backend/src/gc-notify/README.md)

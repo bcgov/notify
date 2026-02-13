@@ -1,0 +1,3 @@
+export const TEMPLATE_RESOLVER = Symbol('TEMPLATE_RESOLVER');
+export const TEMPLATE_RENDERER = Symbol('TEMPLATE_RENDERER');
+export const TEMPLATE_STORE = Symbol('TEMPLATE_STORE');

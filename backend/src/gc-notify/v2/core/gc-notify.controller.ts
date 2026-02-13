@@ -52,7 +52,14 @@ export class GcNotifyController {
       type: 'array',
       items: {
         type: 'string',
-        enum: ['created', 'in-transit', 'pending', 'sent', 'delivered', 'failed'],
+        enum: [
+          'created',
+          'in-transit',
+          'pending',
+          'sent',
+          'delivered',
+          'failed',
+        ],
       },
     },
   })
@@ -72,7 +79,11 @@ export class GcNotifyController {
     @Query('older_than') olderThan?: string,
     @Query('include_jobs') includeJobs?: boolean,
   ) {
-    const statusArray = Array.isArray(status) ? status : status ? [status] : undefined;
+    const statusArray = Array.isArray(status)
+      ? status
+      : status
+        ? [status]
+        : undefined;
     return this.gcNotifyService.getNotifications({
       template_type: templateType,
       status: statusArray,
@@ -127,7 +138,11 @@ export class GcNotifyController {
 
   @Get('notifications/:notificationId')
   @ApiOperation({ summary: 'Get notification by ID' })
-  @ApiResponse({ status: 200, description: 'Notification retrieved successfully', type: Notification })
+  @ApiResponse({
+    status: 200,
+    description: 'Notification retrieved successfully',
+    type: Notification,
+  })
   @ApiResponse({ status: 404, description: 'Notification not found' })
   async getNotificationById(@Param('notificationId') notificationId: string) {
     return this.gcNotifyService.getNotificationById(notificationId);
@@ -148,7 +163,11 @@ export class GcNotifyController {
 
   @Get('template/:templateId')
   @ApiOperation({ summary: 'Get template by ID' })
-  @ApiResponse({ status: 200, description: 'Template retrieved successfully', type: Template })
+  @ApiResponse({
+    status: 200,
+    description: 'Template retrieved successfully',
+    type: Template,
+  })
   @ApiResponse({ status: 404, description: 'Template not found' })
   async getTemplate(@Param('templateId') templateId: string) {
     return this.gcNotifyService.getTemplate(templateId);

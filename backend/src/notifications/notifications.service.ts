@@ -10,6 +10,7 @@ export class NotificationsService {
   constructor(private readonly configService: ConfigService) {}
 
   async sendEmail(dto: SendEmailDto): Promise<NotificationResponseDto> {
+    await Promise.resolve();
     const notificationId = uuidv4();
     this.logger.log(
       `Creating email notification: ${notificationId} to ${dto.to}`,
@@ -35,6 +36,7 @@ export class NotificationsService {
   }
 
   async sendSms(dto: SendSmsDto): Promise<NotificationResponseDto> {
+    await Promise.resolve();
     const notificationId = uuidv4();
     this.logger.log(
       `Creating SMS notification: ${notificationId} to ${dto.phone_number}`,
@@ -59,7 +61,8 @@ export class NotificationsService {
     };
   }
 
-  async getNotification(id: string): Promise<any> {
+  async getNotification(id: string): Promise<NotificationResponseDto> {
+    await Promise.resolve();
     this.logger.log(`Fetching notification: ${id}`);
 
     // TODO: Fetch from database

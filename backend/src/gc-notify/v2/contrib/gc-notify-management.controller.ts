@@ -47,7 +47,11 @@ export class GcNotifyManagementController {
     summary: 'List senders',
     description: EXTENSION_DESCRIPTION,
   })
-  @ApiQuery({ name: 'type', required: false, enum: ['email', 'sms', 'email+sms'] })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['email', 'sms', 'email+sms'],
+  })
   @ApiResponse({
     status: 200,
     description: 'Successfully retrieved senders',
@@ -63,7 +67,11 @@ export class GcNotifyManagementController {
     summary: 'Get sender by ID',
     description: EXTENSION_DESCRIPTION,
   })
-  @ApiResponse({ status: 200, description: 'Sender retrieved successfully', type: Sender })
+  @ApiResponse({
+    status: 200,
+    description: 'Sender retrieved successfully',
+    type: Sender,
+  })
   @ApiResponse({ status: 404, description: 'Sender not found' })
   async getSender(@Param('senderId') senderId: string) {
     return this.gcNotifyService.getSender(senderId);
@@ -91,7 +99,11 @@ export class GcNotifyManagementController {
     summary: 'Update sender',
     description: EXTENSION_DESCRIPTION,
   })
-  @ApiResponse({ status: 200, description: 'Sender updated successfully', type: Sender })
+  @ApiResponse({
+    status: 200,
+    description: 'Sender updated successfully',
+    type: Sender,
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 404, description: 'Sender not found' })
   async updateSender(
@@ -137,7 +149,11 @@ export class GcNotifyManagementController {
     summary: 'Update template',
     description: EXTENSION_DESCRIPTION,
   })
-  @ApiResponse({ status: 200, description: 'Template updated successfully', type: Template })
+  @ApiResponse({
+    status: 200,
+    description: 'Template updated successfully',
+    type: Template,
+  })
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 404, description: 'Template not found' })
   async updateTemplate(

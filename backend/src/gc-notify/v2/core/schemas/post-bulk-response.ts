@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PostBulkJobCreatedBy {
-  @ApiProperty({ description: 'ID of the user who created the job', format: 'uuid' })
+  @ApiProperty({
+    description: 'ID of the user who created the job',
+    format: 'uuid',
+  })
   id: string;
 
   @ApiProperty({ description: 'Name of the user who created the job' })
@@ -28,7 +31,10 @@ export class PostBulkJobApiKey {
 }
 
 export class PostBulkJobData {
-  @ApiProperty({ description: 'ID of the bulk notification job', format: 'uuid' })
+  @ApiProperty({
+    description: 'ID of the bulk notification job',
+    format: 'uuid',
+  })
   id: string;
 
   @ApiProperty({ description: 'ID of the template used', format: 'uuid' })
@@ -53,13 +59,18 @@ export class PostBulkJobData {
   @ApiProperty({ description: 'Number of notifications in the bulk job' })
   notification_count: number;
 
-  @ApiPropertyOptional({ description: 'Name of the original CSV file if provided' })
+  @ApiPropertyOptional({
+    description: 'Name of the original CSV file if provided',
+  })
   original_file_name?: string;
 
   @ApiPropertyOptional({ description: 'Template version used' })
   template_version?: number;
 
-  @ApiPropertyOptional({ description: 'ID of the service that created the job', format: 'uuid' })
+  @ApiPropertyOptional({
+    description: 'ID of the service that created the job',
+    format: 'uuid',
+  })
   service?: string;
 
   @ApiPropertyOptional({ description: 'User who created the job' })
@@ -68,16 +79,28 @@ export class PostBulkJobData {
   @ApiProperty({ description: 'When the job was created', format: 'date-time' })
   created_at: string;
 
-  @ApiPropertyOptional({ description: 'When the job was last updated', format: 'date-time' })
+  @ApiPropertyOptional({
+    description: 'When the job was last updated',
+    format: 'date-time',
+  })
   updated_at?: string;
 
-  @ApiPropertyOptional({ description: 'When the job is scheduled to be processed', format: 'date-time' })
+  @ApiPropertyOptional({
+    description: 'When the job is scheduled to be processed',
+    format: 'date-time',
+  })
   scheduled_for?: string;
 
-  @ApiPropertyOptional({ description: 'When processing started', format: 'date-time' })
+  @ApiPropertyOptional({
+    description: 'When processing started',
+    format: 'date-time',
+  })
   processing_started?: string;
 
-  @ApiPropertyOptional({ description: 'When processing finished', format: 'date-time' })
+  @ApiPropertyOptional({
+    description: 'When processing finished',
+    format: 'date-time',
+  })
   processing_finished?: string;
 
   @ApiPropertyOptional({ description: 'Name of the service' })
