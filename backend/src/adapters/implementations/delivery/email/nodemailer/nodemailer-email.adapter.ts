@@ -41,7 +41,11 @@ export class NodemailerEmailTransport implements IEmailTransport {
     const info = await this.transporter.sendMail({
       from:
         options.from ??
-        this.configService.get<string>('nodemailer.from', 'noreply@localhost'),
+        this.configService.get<string>('nodemailer.from') ??
+        this.configService.get<string>(
+          'defaults.email.from',
+          'noreply@localhost',
+        ),
       to: options.to,
       replyTo: options.replyTo,
       subject: options.subject,

@@ -54,6 +54,7 @@ export class MyService {
 
 | Name | Type | Description |
 |------|------|-------------|
+| `ches` | Email | CHES (Common Hosted Email Service) REST API |
 | `nodemailer` | Email | SMTP via Nodemailer (e.g. Mailpit for local dev) |
 | `twilio` | SMS | Twilio API (logs only when credentials are unset) |
 
@@ -77,7 +78,9 @@ adapters/
 │   └── storage/        # ITemplateStore, ISenderStore
 ├── implementations/
 │   ├── delivery/
-│   │   ├── email/nodemailer/
+│   │   ├── email/
+│   │   │   ├── ches/
+│   │   │   └── nodemailer/
 │   │   └── sms/twilio/
 │   ├── template/
 │   │   ├── renderer/

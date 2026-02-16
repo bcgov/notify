@@ -74,8 +74,13 @@ describe('GcNotifyService', () => {
       send: jest.fn().mockResolvedValue({ messageId: 'sms-1' }),
     };
     configGetMock = jest.fn((key: string, fallback?: string) => {
+      if (key === 'delivery.email') return fallback ?? 'nodemailer';
       if (key === 'nodemailer.from') return fallback ?? 'noreply@localhost';
       if (key === 'twilio.fromNumber') return fallback ?? '+15551234567';
+      if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
+      if (key === 'defaults.sms.fromNumber') return fallback ?? '+15551234567';
+      if (key === 'defaults.templates.defaultSubject')
+        return fallback ?? 'Notification';
       return undefined;
     });
 

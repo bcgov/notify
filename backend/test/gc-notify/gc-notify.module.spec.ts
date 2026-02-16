@@ -39,8 +39,8 @@ describe('GcNotifyModule', () => {
   it('forRoot uses custom templateRenderers and defaultTemplateEngine when provided', () => {
     class CustomRenderer {
       readonly name = 'custom';
-      renderEmail = jest.fn().mockReturnValue({ subject: 's', body: 'b' });
-      renderSms = jest.fn().mockReturnValue({ body: 'b' });
+      renderEmail = jest.fn().mockResolvedValue({ subject: 's', body: 'b' });
+      renderSms = jest.fn().mockResolvedValue({ body: 'b' });
     }
 
     const dynamic = GcNotifyModule.forRoot({

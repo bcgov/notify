@@ -16,7 +16,7 @@ describe('HandlebarsTemplateRenderer', () => {
     expect(renderer.name).toBe('handlebars');
   });
 
-  it('renderEmail returns subject and body with personalisation interpolated', () => {
+  it('renderEmail returns subject and body with personalisation interpolated', async () => {
     const template: TemplateDefinition = {
       id: 't1',
       name: 'Welcome',
@@ -26,7 +26,7 @@ describe('HandlebarsTemplateRenderer', () => {
       active: true,
     };
 
-    const result = renderer.renderEmail({
+    const result = await renderer.renderEmail({
       template,
       personalisation: { name: 'Alice', code: '123' },
     });
@@ -35,7 +35,7 @@ describe('HandlebarsTemplateRenderer', () => {
     expect(result.body).toBe('Welcome, Alice. Your code is 123.');
   });
 
-  it('renderEmail uses default subject when template has none', () => {
+  it('renderEmail uses default subject when template has none', async () => {
     const template: TemplateDefinition = {
       id: 't1',
       name: 'No Subject',
@@ -44,7 +44,7 @@ describe('HandlebarsTemplateRenderer', () => {
       active: true,
     };
 
-    const result = renderer.renderEmail({
+    const result = await renderer.renderEmail({
       template,
       personalisation: {},
     });
@@ -53,7 +53,7 @@ describe('HandlebarsTemplateRenderer', () => {
     expect(result.body).toBe('Body only');
   });
 
-  it('renderEmail includes attachments from file personalisation', () => {
+  it('renderEmail includes attachments from file personalisation', async () => {
     const template: TemplateDefinition = {
       id: 't1',
       name: 'With attachment',
@@ -64,7 +64,7 @@ describe('HandlebarsTemplateRenderer', () => {
     };
     const base64Content = Buffer.from('file content').toString('base64');
 
-    const result = renderer.renderEmail({
+    const result = await renderer.renderEmail({
       template,
       personalisation: {
         name: 'Alice',
@@ -84,7 +84,7 @@ describe('HandlebarsTemplateRenderer', () => {
     expect(result.attachments?.[0].sendingMethod).toBe('attach');
   });
 
-  it('renderSms returns body with personalisation interpolated', () => {
+  it('renderSms returns body with personalisation interpolated', async () => {
     const template: TemplateDefinition = {
       id: 't1',
       name: 'SMS',
@@ -93,7 +93,7 @@ describe('HandlebarsTemplateRenderer', () => {
       active: true,
     };
 
-    const result = renderer.renderSms({
+    const result = await renderer.renderSms({
       template,
       personalisation: { name: 'Bob', code: '456' },
     });

@@ -11,7 +11,7 @@
  * Run in devcontainer against local services:
  *   npm run demo
  *
- * Config: DEMO_ENV_FILE or test/e2e/env.local
+ * Config: DEMO_ENV_FILE or test/e2e/env.local; DEMO_LOCAL_ENV_FILE or backend/.env.local for overrides.
  */
 
 import { config } from 'dotenv';
@@ -21,6 +21,10 @@ import { resolve } from 'path';
 const envFile =
   process.env.DEMO_ENV_FILE || resolve(__dirname, '../../test/e2e/env.local');
 config({ path: envFile, quiet: true });
+
+const localFile =
+  process.env.DEMO_LOCAL_ENV_FILE || resolve(__dirname, '../../.env.local');
+config({ path: localFile, quiet: true });
 
 const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
 const apiKey = process.env.E2E_API_KEY || process.env.API_KEY || '';
@@ -131,7 +135,7 @@ async function main(): Promise<void> {
 
   if (!apiKey) {
     fail(
-      'E2E_API_KEY (or API_KEY) is required. Set it in env.local or DEMO_ENV_FILE.',
+      'E2E_API_KEY (or API_KEY) is required. Set it in test/e2e/env.local or backend/.env.local.',
     );
     process.exit(1);
   }
@@ -339,4 +343,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+void main();

@@ -1,11 +1,14 @@
+import './load-env';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -42,8 +45,17 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
 
+  const emailAdapter =
+    configService.get<string>('delivery.email') ?? 'nodemailer';
+  const smsAdapter = configService.get<string>('delivery.sms') ?? 'twilio';
+  const templateEngine =
+    configService.get<string>('gcNotify.defaultTemplateEngine') ?? 'jinja2';
+
   logger.log(`BC Notify API running on port ${port}`);
   logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  logger.log(
+    `Adapters: email=${emailAdapter}, sms=${smsAdapter}, template=${templateEngine}`,
+  );
 }
 
 void bootstrap();

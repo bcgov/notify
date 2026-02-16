@@ -16,11 +16,17 @@ cd /workspace
 if [ ! -f backend/.env ]; then
   echo "==> Creating backend/.env from .env.example..."
   cp backend/.env.example backend/.env
-  # Point DATABASE_URL to the devcontainer db service
-  sed -i 's|^DATABASE_URL=.*|DATABASE_URL=postgresql://postgres:postgres@db:5432/notify|' backend/.env
-  echo "    Updated DATABASE_URL to use devcontainer PostgreSQL service"
 else
   echo "==> backend/.env already exists, skipping..."
+fi
+
+# ── Set up local overrides file (create once, never overwrite) ─────────────────
+if [ ! -f backend/.env.local ]; then
+  echo "==> Creating backend/.env.local from .env.local.example..."
+  cp backend/.env.local.example backend/.env.local
+  echo "    Add credentials and overrides to .env.local (never committed)"
+else
+  echo "==> backend/.env.local already exists, skipping..."
 fi
 
 # ── Print summary ───────────────────────────────────────────────────────────

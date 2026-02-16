@@ -28,6 +28,7 @@ const adapterOptions = {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', '.env.local'],
       load: [configuration],
     }),
     AdaptersModule.forRoot(adapterOptions),

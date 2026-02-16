@@ -103,21 +103,36 @@ export class GcNotifyService {
     }
 
     const personalisation = this.normalizePersonalisation(body.personalisation);
+    const defaultSubject = this.configService.get<string>(
+      'defaults.templates.defaultSubject',
+      'Notification',
+    );
     const engine = template.engine ?? this.defaultEngine;
     const renderer = this.rendererRegistry.getRenderer(engine);
-    const rendered = renderer.renderEmail({
+    const rendered = await renderer.renderEmail({
       template,
       personalisation,
+      defaultSubject,
     });
 
+    const subject = body.subject ?? rendered.subject ?? defaultSubject;
+
     const sender = await this.resolveEmailSender(body.email_reply_to_id);
+    const emailAdapter = this.configService.get<string>(
+      'delivery.email',
+      'nodemailer',
+    );
     const fromEmail =
       sender?.email_address ??
-      this.configService.get<string>('nodemailer.from', 'noreply@localhost');
+      this.configService.get<string>(`${emailAdapter}.from`) ??
+      this.configService.get<string>(
+        'defaults.email.from',
+        'noreply@localhost',
+      );
 
     await this.emailTransport.send({
       to: body.email_address,
-      subject: rendered.subject,
+      subject,
       body: rendered.body,
       from: fromEmail,
       replyTo: sender?.email_address,
@@ -130,7 +145,7 @@ export class GcNotifyService {
       content: {
         from_email: fromEmail,
         body: rendered.body,
-        subject: rendered.subject,
+        subject,
       },
       uri: `/gc-notify/v2/notifications/${notificationId}`,
       template: {
@@ -166,7 +181,7 @@ export class GcNotifyService {
     const personalisation = body.personalisation ?? {};
     const engine = template.engine ?? this.defaultEngine;
     const renderer = this.rendererRegistry.getRenderer(engine);
-    const rendered = renderer.renderSms({
+    const rendered = await renderer.renderSms({
       template,
       personalisation,
     });
@@ -174,7 +189,8 @@ export class GcNotifyService {
     const sender = await this.resolveSmsSender(body.sms_sender_id);
     const fromNumber =
       sender?.sms_sender ??
-      this.configService.get<string>('twilio.fromNumber', '+15551234567');
+      this.configService.get<string>('twilio.fromNumber') ??
+      this.configService.get<string>('defaults.sms.fromNumber', '+15551234567');
 
     await this.smsTransport.send({
       to: body.phone_number,

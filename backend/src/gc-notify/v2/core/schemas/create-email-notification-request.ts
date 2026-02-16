@@ -54,4 +54,12 @@ export class CreateEmailNotificationRequest {
   @IsOptional()
   @IsUUID()
   email_reply_to_id?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Subject override. When provided, overrides template subject. Useful for per-call subject customization.',
+  })
+  @IsOptional()
+  @IsString()
+  subject?: string;
 }
