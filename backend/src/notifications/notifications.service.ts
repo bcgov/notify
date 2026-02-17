@@ -1,7 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
-import { SendEmailDto, SendSmsDto, NotificationResponseDto } from './dto';
+import {
+  SendEmailRequest,
+  SendSmsRequest,
+  SendNotificationResponse,
+} from './v1/core/schemas';
 
 @Injectable()
 export class NotificationsService {
@@ -9,55 +13,55 @@ export class NotificationsService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  sendEmail(dto: SendEmailDto): Promise<NotificationResponseDto> {
+  sendEmail(body: SendEmailRequest): Promise<SendNotificationResponse> {
     const notificationId = uuidv4();
     this.logger.log(
-      `Creating email notification: ${notificationId} to ${dto.to}`,
+      `Creating email notification: ${notificationId} to ${body.to}`,
     );
 
     // TODO(BCNOTIFY): Integrate with CHES provider when available
     return Promise.resolve({
       id: notificationId,
-      reference: dto.reference,
+      reference: body.reference,
       content: {
-        body: `Email sent with template ${dto.template_id}`,
+        body: `Email sent with template ${body.template_id}`,
         subject: 'Notification',
         from_email: 'noreply@gov.bc.ca',
       },
-      uri: `/v2/notifications/${notificationId}`,
+      uri: `/v1/notifications/${notificationId}`,
       template: {
-        id: dto.template_id,
+        id: body.template_id,
         version: 1,
-        uri: `/v2/templates/${dto.template_id}`,
+        uri: `/v1/templates/${body.template_id}`,
       },
     });
   }
 
-  sendSms(dto: SendSmsDto): Promise<NotificationResponseDto> {
+  sendSms(body: SendSmsRequest): Promise<SendNotificationResponse> {
     const notificationId = uuidv4();
     this.logger.log(
-      `Creating SMS notification: ${notificationId} to ${dto.phone_number}`,
+      `Creating SMS notification: ${notificationId} to ${body.phone_number}`,
     );
 
     // TODO(BCNOTIFY): Integrate with Twilio provider when available
     return Promise.resolve({
       id: notificationId,
-      reference: dto.reference,
+      reference: body.reference,
       content: {
-        body: `SMS sent with template ${dto.template_id}`,
+        body: `SMS sent with template ${body.template_id}`,
         from_number:
           this.configService.get<string>('twilio.fromNumber') || '+15551234567',
       },
-      uri: `/v2/notifications/${notificationId}`,
+      uri: `/v1/notifications/${notificationId}`,
       template: {
-        id: dto.template_id,
+        id: body.template_id,
         version: 1,
-        uri: `/v2/templates/${dto.template_id}`,
+        uri: `/v1/templates/${body.template_id}`,
       },
     });
   }
 
-  getNotification(id: string): Promise<NotificationResponseDto> {
+  getNotification(id: string): Promise<SendNotificationResponse> {
     this.logger.log(`Fetching notification: ${id}`);
 
     // TODO(BCNOTIFY): Fetch from database when persistence layer is added

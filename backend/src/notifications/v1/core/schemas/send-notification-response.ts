@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class NotificationResponseDto {
+export class SendNotificationResponse {
   @ApiProperty({
     description: 'Unique notification ID',
     example: '740e5834-3a29-46b4-9a6f-16142fde533a',
@@ -25,7 +25,7 @@ export class NotificationResponseDto {
 
   @ApiProperty({
     description: 'URI to fetch notification status',
-    example: '/v2/notifications/740e5834-3a29-46b4-9a6f-16142fde533a',
+    example: '/v1/notifications/740e5834-3a29-46b4-9a6f-16142fde533a',
   })
   uri: string;
 

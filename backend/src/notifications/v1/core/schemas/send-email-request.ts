@@ -1,24 +1,22 @@
 import {
+  IsEmail,
   IsString,
   IsOptional,
   IsObject,
   IsUUID,
-  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class SendSmsDto {
+export class SendEmailRequest {
   @ApiProperty({
-    description: 'Recipient phone number in E.164 format',
-    example: '+12505551234',
+    description: 'Recipient email address',
+    example: 'recipient@gov.bc.ca',
   })
-  @Matches(/^\+[1-9]\d{1,14}$/, {
-    message: 'Phone number must be in E.164 format (e.g., +12505551234)',
-  })
-  phone_number: string;
+  @IsEmail()
+  to: string;
 
   @ApiProperty({
-    description: 'Template ID to use for the SMS',
+    description: 'Template ID to use for the email',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
   @IsUUID()
@@ -26,7 +24,7 @@ export class SendSmsDto {
 
   @ApiPropertyOptional({
     description: 'Personalization variables for the template',
-    example: { code: '123456' },
+    example: { name: 'John Doe', reference_number: 'REF-12345' },
   })
   @IsOptional()
   @IsObject()
@@ -34,7 +32,7 @@ export class SendSmsDto {
 
   @ApiPropertyOptional({
     description: 'Client reference for tracking',
-    example: 'my-sms-reference-456',
+    example: 'my-reference-123',
   })
   @IsOptional()
   @IsString()

@@ -8,8 +8,8 @@ interface NotificationResponse {
 }
 
 describe('Notifications (integration)', () => {
-  it('POST /v2/notifications/email without API key returns 401', async () => {
-    const res = await fetch(`${baseUrl}/v2/notifications/email`, {
+  it('POST /v1/notifications/email without API key returns 401', async () => {
+    const res = await fetch(`${baseUrl}/v1/notifications/email`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -20,8 +20,8 @@ describe('Notifications (integration)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /v2/notifications/sms without API key returns 401', async () => {
-    const res = await fetch(`${baseUrl}/v2/notifications/sms`, {
+  it('POST /v1/notifications/sms without API key returns 401', async () => {
+    const res = await fetch(`${baseUrl}/v1/notifications/sms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -32,10 +32,10 @@ describe('Notifications (integration)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /v2/notifications/email returns 201', async () => {
+  it('POST /v1/notifications/email returns 201', async () => {
     if (!apiKey) return;
 
-    const res = await fetch(`${baseUrl}/v2/notifications/email`, {
+    const res = await fetch(`${baseUrl}/v1/notifications/email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -49,6 +49,6 @@ describe('Notifications (integration)', () => {
     expect(res.status).toBe(201);
     const body = (await res.json()) as NotificationResponse;
     expect(body.id).toBeDefined();
-    expect(body.uri).toMatch(/\/v2\/notifications\//);
+    expect(body.uri).toMatch(/\/v1\/notifications\//);
   });
 });

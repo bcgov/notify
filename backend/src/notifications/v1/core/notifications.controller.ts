@@ -14,14 +14,18 @@ import {
   ApiResponse,
   ApiSecurity,
 } from '@nestjs/swagger';
-import { NotificationsService } from './notifications.service';
-import { SendEmailDto, SendSmsDto, NotificationResponseDto } from './dto';
-import { ApiKeyGuard } from '../common/guards';
+import { NotificationsService } from '../../notifications.service';
+import {
+  SendEmailRequest,
+  SendSmsRequest,
+  SendNotificationResponse,
+} from './schemas';
+import { ApiKeyGuard } from '../../../common/guards';
 
 @ApiTags('Notifications')
 @ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
-@Controller('v2/notifications')
+@Controller('v1/notifications')
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
@@ -31,12 +35,14 @@ export class NotificationsController {
   @ApiResponse({
     status: 201,
     description: 'Email notification created',
-    type: NotificationResponseDto,
+    type: SendNotificationResponse,
   })
   @ApiResponse({ status: 400, description: 'Invalid request body' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid API key' })
-  async sendEmail(@Body() dto: SendEmailDto): Promise<NotificationResponseDto> {
-    return this.notificationsService.sendEmail(dto);
+  async sendEmail(
+    @Body() body: SendEmailRequest,
+  ): Promise<SendNotificationResponse> {
+    return this.notificationsService.sendEmail(body);
   }
 
   @Post('sms')
@@ -45,12 +51,12 @@ export class NotificationsController {
   @ApiResponse({
     status: 201,
     description: 'SMS notification created',
-    type: NotificationResponseDto,
+    type: SendNotificationResponse,
   })
   @ApiResponse({ status: 400, description: 'Invalid request body' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid API key' })
-  async sendSms(@Body() dto: SendSmsDto): Promise<NotificationResponseDto> {
-    return this.notificationsService.sendSms(dto);
+  async sendSms(@Body() body: SendSmsRequest): Promise<SendNotificationResponse> {
+    return this.notificationsService.sendSms(body);
   }
 
   @Get(':id')
@@ -59,7 +65,7 @@ export class NotificationsController {
   @ApiResponse({ status: 404, description: 'Notification not found' })
   async getNotification(
     @Param('id') id: string,
-  ): Promise<NotificationResponseDto> {
+  ): Promise<SendNotificationResponse> {
     return this.notificationsService.getNotification(id);
   }
 }
