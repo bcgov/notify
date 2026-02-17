@@ -200,12 +200,12 @@ async function main(): Promise<void> {
   try {
     // ─── Step 1: Create sender for CHES ─────────────────────────────────────
     step(1, 'Create sender identity for CHES');
-    sub('POST /gc-notify/v2/notifications/senders');
+    sub('POST /gc-notify/v2/senders');
     sub(
       'We register a verified CHES email address. Its UUID is used as email_reply_to_id.',
     );
 
-    const createSenderRes = await fetch(gcNotify('/notifications/senders'), {
+    const createSenderRes = await fetch(gcNotify('/senders'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

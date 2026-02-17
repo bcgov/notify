@@ -146,12 +146,12 @@ async function main(): Promise<void> {
   try {
     // ─── Step 1: Create sender ────────────────────────────────────────────
     step(1, 'Create a sender identity');
-    sub('POST /gc-notify/v2/notifications/senders');
+    sub('POST /gc-notify/v2/senders');
     sub(
       'We register an email address that will appear as the "From" for our notifications.',
     );
 
-    const createSenderRes = await fetch(gcNotify('/notifications/senders'), {
+    const createSenderRes = await fetch(gcNotify('/senders'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

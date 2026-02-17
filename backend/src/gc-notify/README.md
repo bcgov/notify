@@ -21,7 +21,7 @@ GC Notify–compatible API for template-based email and SMS notifications. Sends
 
 **Contrib** (`v2/contrib/`) – Management API (not in official GC Notify spec):
 
-- Senders: `GET/POST/PUT/DELETE /gc-notify/v2/notifications/senders`
+- Senders: `GET/POST/PUT/DELETE /gc-notify/v2/senders`
 - Templates: `POST /gc-notify/v2/templates`, `PUT /gc-notify/v2/template/:id`, `DELETE /gc-notify/v2/template/:id`
 
 ## GC-Specific Adapters

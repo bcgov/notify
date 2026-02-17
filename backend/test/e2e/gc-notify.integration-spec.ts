@@ -158,7 +158,7 @@ describe('GC Notify (integration)', () => {
     const recipientEmail = `e2e-recipient-${Date.now()}@example.com`;
 
     // --- 1. Create sender ---
-    const createSenderRes = await fetch(gcNotify('/notifications/senders'), {
+    const createSenderRes = await fetch(gcNotify('/senders'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

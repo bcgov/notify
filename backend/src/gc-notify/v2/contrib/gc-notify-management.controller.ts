@@ -42,7 +42,7 @@ export class GcNotifyManagementController {
 
   // --- Senders ---
 
-  @Get('notifications/senders')
+  @Get('senders')
   @ApiOperation({
     summary: 'List senders',
     description: EXTENSION_DESCRIPTION,
@@ -62,7 +62,7 @@ export class GcNotifyManagementController {
     return this.gcNotifyService.getSenders(type);
   }
 
-  @Get('notifications/senders/:senderId')
+  @Get('senders/:senderId')
   @ApiOperation({
     summary: 'Get sender by ID',
     description: EXTENSION_DESCRIPTION,
@@ -77,7 +77,7 @@ export class GcNotifyManagementController {
     return this.gcNotifyService.getSender(senderId);
   }
 
-  @Post('notifications/senders')
+  @Post('senders')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Create sender',
@@ -94,7 +94,7 @@ export class GcNotifyManagementController {
     return this.gcNotifyService.createSender(body);
   }
 
-  @Put('notifications/senders/:senderId')
+  @Put('senders/:senderId')
   @ApiOperation({
     summary: 'Update sender',
     description: EXTENSION_DESCRIPTION,
@@ -113,7 +113,7 @@ export class GcNotifyManagementController {
     return this.gcNotifyService.updateSender(senderId, body);
   }
 
-  @Delete('notifications/senders/:senderId')
+  @Delete('senders/:senderId')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete sender',
