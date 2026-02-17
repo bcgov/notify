@@ -3,7 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { ChesEmailTransport } from './implementations/delivery/email/ches/ches-email.adapter';
 import { NodemailerEmailTransport } from './implementations/delivery/email/nodemailer/nodemailer-email.adapter';
 import { TwilioSmsTransport } from './implementations/delivery/sms/twilio/twilio-sms.adapter';
-import { EMAIL_ADAPTER, EMAIL_ADAPTER_MAP, SMS_ADAPTER, SMS_ADAPTER_MAP } from './tokens';
+import {
+  EMAIL_ADAPTER,
+  EMAIL_ADAPTER_MAP,
+  SMS_ADAPTER,
+  SMS_ADAPTER_MAP,
+} from './tokens';
 import type { IEmailTransport, ISmsTransport } from './interfaces';
 
 export interface AdaptersModuleOptions {
@@ -38,7 +43,9 @@ export class AdaptersModule {
         },
         {
           provide: SMS_ADAPTER_MAP,
-          useFactory: (twilio: TwilioSmsTransport): Record<string, ISmsTransport> => ({
+          useFactory: (
+            twilio: TwilioSmsTransport,
+          ): Record<string, ISmsTransport> => ({
             twilio,
           }),
           inject: [TwilioSmsTransport],
@@ -75,12 +82,7 @@ export class AdaptersModule {
           inject: [SMS_ADAPTER_MAP, ConfigService],
         },
       ],
-      exports: [
-        EMAIL_ADAPTER,
-        SMS_ADAPTER,
-        EMAIL_ADAPTER_MAP,
-        SMS_ADAPTER_MAP,
-      ],
+      exports: [EMAIL_ADAPTER, SMS_ADAPTER, EMAIL_ADAPTER_MAP, SMS_ADAPTER_MAP],
     };
   }
 }

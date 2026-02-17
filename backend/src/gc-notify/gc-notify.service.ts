@@ -25,7 +25,6 @@ import {
   CreateTemplateRequest,
   UpdateTemplateRequest,
 } from './v2/contrib/schemas';
-import type { IEmailTransport, ISmsTransport } from '../adapters/interfaces';
 import type {
   ITemplateResolver,
   ITemplateRendererRegistry,
@@ -66,7 +65,7 @@ export class GcNotifyService {
     @Inject(SENDER_STORE) private readonly senderStore: ISenderStore,
   ) {}
 
-  async getNotifications(query: {
+  getNotifications(query: {
     template_type?: 'sms' | 'email';
     status?: string[];
     reference?: string;
@@ -74,17 +73,17 @@ export class GcNotifyService {
     include_jobs?: boolean;
   }): Promise<{ notifications: Notification[]; links: Links }> {
     this.logger.log('Getting notifications list', { query });
-    await Promise.resolve();
-    return {
+    return Promise.resolve({
       notifications: [],
       links: { current: '/gc-notify/v2/notifications' },
-    };
+    });
   }
 
-  async getNotificationById(notificationId: string): Promise<Notification> {
+  getNotificationById(notificationId: string): Promise<Notification> {
     this.logger.log(`Getting notification: ${notificationId}`);
-    await Promise.resolve();
-    throw new NotFoundException('Notification not found in database');
+    return Promise.reject(
+      new NotFoundException('Notification not found in database'),
+    );
   }
 
   async sendEmail(
@@ -145,7 +144,7 @@ export class GcNotifyService {
         'noreply@localhost',
       );
 
-    await (emailAdapter as IEmailTransport).send({
+    await emailAdapter.send({
       to: body.email_address,
       subject,
       body: rendered.body,
@@ -219,7 +218,7 @@ export class GcNotifyService {
       this.configService.get<string>('twilio.fromNumber') ??
       this.configService.get<string>('defaults.sms.fromNumber', '+15551234567');
 
-    await (smsAdapter as ISmsTransport).send({
+    await smsAdapter.send({
       to: body.phone_number,
       body: rendered.body,
       from: fromNumber,
@@ -297,10 +296,11 @@ export class GcNotifyService {
     return defaultSender ?? null;
   }
 
-  async sendBulk(body: PostBulkRequest): Promise<PostBulkResponse> {
-    await Promise.resolve();
+  sendBulk(body: PostBulkRequest): Promise<PostBulkResponse> {
     if (!body.rows && !body.csv) {
-      throw new BadRequestException('You should specify either rows or csv');
+      return Promise.reject(
+        new BadRequestException('You should specify either rows or csv'),
+      );
     }
 
     const rowCount = body.rows
@@ -308,8 +308,10 @@ export class GcNotifyService {
       : (body.csv?.split('\n').length ?? 1) - 1;
 
     if (rowCount > 50000) {
-      throw new BadRequestException(
-        'Too many rows. Maximum number of rows allowed is 50000',
+      return Promise.reject(
+        new BadRequestException(
+          'Too many rows. Maximum number of rows allowed is 50000',
+        ),
       );
     }
 
@@ -325,7 +327,7 @@ export class GcNotifyService {
       created_at: now,
     };
 
-    return { data };
+    return Promise.resolve({ data });
   }
 
   async getTemplates(
@@ -340,7 +342,6 @@ export class GcNotifyService {
     }
 
     this.logger.log('Getting templates list');
-    await Promise.resolve();
     let templates = this.templateStore.getAll();
     if (type) {
       templates = templates.filter((t) => t.type === type);
@@ -348,7 +349,10 @@ export class GcNotifyService {
     return { templates };
   }
 
-  async getTemplate(templateId: string, authHeader?: string): Promise<Template> {
+  async getTemplate(
+    templateId: string,
+    authHeader?: string,
+  ): Promise<Template> {
     const emailKey = this.deliveryContextService.getEmailAdapterKey();
     const smsKey = this.deliveryContextService.getSmsAdapterKey();
 
@@ -366,18 +370,17 @@ export class GcNotifyService {
 
   // --- Senders CRUD (Extension: Management) ---
 
-  async getSenders(
+  getSenders(
     type?: 'email' | 'sms' | 'email+sms',
   ): Promise<{ senders: Sender[] }> {
     this.logger.log('Getting senders list');
-    await Promise.resolve();
     let senders = this.senderStore.getAll();
     if (type) {
       senders = senders.filter(
         (s) => s.type === type || s.type === 'email+sms',
       );
     }
-    return { senders };
+    return Promise.resolve({ senders });
   }
 
   async getSender(senderId: string): Promise<Sender> {
@@ -389,9 +392,14 @@ export class GcNotifyService {
     return sender;
   }
 
-  async createSender(body: CreateSenderRequest): Promise<Sender> {
-    await Promise.resolve();
-    this.validateSenderFields(body);
+  createSender(body: CreateSenderRequest): Promise<Sender> {
+    try {
+      this.validateSenderFields(body);
+    } catch (err) {
+      return Promise.reject(
+        err instanceof Error ? err : new Error(String(err)),
+      );
+    }
     const id = uuidv4();
     const now = new Date().toISOString();
     const sender: StoredSender = {
@@ -405,7 +413,7 @@ export class GcNotifyService {
     };
     this.senderStore.set(id, sender);
     this.logger.log(`Created sender: ${id}`);
-    return sender;
+    return Promise.resolve(sender);
   }
 
   async updateSender(
@@ -428,13 +436,13 @@ export class GcNotifyService {
     return updated;
   }
 
-  async deleteSender(senderId: string): Promise<void> {
-    await Promise.resolve();
+  deleteSender(senderId: string): Promise<void> {
     if (!this.senderStore.has(senderId)) {
-      throw new NotFoundException('Sender not found');
+      return Promise.reject(new NotFoundException('Sender not found'));
     }
     this.senderStore.delete(senderId);
     this.logger.log(`Deleted sender: ${senderId}`);
+    return Promise.resolve();
   }
 
   private validateSenderFields(body: CreateSenderRequest): void {
@@ -456,8 +464,7 @@ export class GcNotifyService {
 
   // --- Templates CRUD (Extension: Management) ---
 
-  async createTemplate(body: CreateTemplateRequest): Promise<Template> {
-    await Promise.resolve();
+  createTemplate(body: CreateTemplateRequest): Promise<Template> {
     const id = uuidv4();
     const now = new Date().toISOString();
     const template: StoredTemplate = {
@@ -476,7 +483,7 @@ export class GcNotifyService {
     };
     this.templateStore.set(id, template);
     this.logger.log(`Created template: ${id}`);
-    return template;
+    return Promise.resolve(template);
   }
 
   async updateTemplate(
@@ -499,12 +506,14 @@ export class GcNotifyService {
     return updated;
   }
 
-  async deleteTemplate(templateId: string): Promise<void> {
-    await Promise.resolve();
+  deleteTemplate(templateId: string): Promise<void> {
     if (!this.templateStore.has(templateId)) {
-      throw new NotFoundException('Template not found in database');
+      return Promise.reject(
+        new NotFoundException('Template not found in database'),
+      );
     }
     this.templateStore.delete(templateId);
     this.logger.log(`Deleted template: ${templateId}`);
+    return Promise.resolve();
   }
 }

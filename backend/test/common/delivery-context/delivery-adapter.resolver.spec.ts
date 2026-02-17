@@ -1,13 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DeliveryAdapterResolver, GC_NOTIFY_CLIENT } from '../../../src/common/delivery-context/delivery-adapter.resolver';
+import {
+  DeliveryAdapterResolver,
+  GC_NOTIFY_CLIENT,
+} from '../../../src/common/delivery-context/delivery-adapter.resolver';
 import { DeliveryContextService } from '../../../src/common/delivery-context/delivery-context.service';
-import { EMAIL_ADAPTER_MAP, SMS_ADAPTER_MAP } from '../../../src/adapters/tokens';
-import type { IEmailTransport, ISmsTransport } from '../../../src/adapters/interfaces';
+import {
+  EMAIL_ADAPTER_MAP,
+  SMS_ADAPTER_MAP,
+} from '../../../src/adapters/tokens';
+import type {
+  IEmailTransport,
+  ISmsTransport,
+} from '../../../src/adapters/interfaces';
 
 describe('DeliveryAdapterResolver', () => {
   let resolver: DeliveryAdapterResolver;
-  let contextService: { getEmailAdapterKey: jest.Mock; getSmsAdapterKey: jest.Mock };
-  const mockChes = { name: 'ches', send: jest.fn() } as unknown as IEmailTransport;
+  let contextService: {
+    getEmailAdapterKey: jest.Mock;
+    getSmsAdapterKey: jest.Mock;
+  };
+  const mockChes = {
+    name: 'ches',
+    send: jest.fn(),
+  } as unknown as IEmailTransport;
   const mockNodemailer = {
     name: 'nodemailer',
     send: jest.fn(),

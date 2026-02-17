@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NestMiddleware,
-} from '@nestjs/common';
+import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
 import type { DeliveryContext } from './delivery-context.interface';

@@ -30,8 +30,8 @@ describe('DeliveryContextMiddleware', () => {
   });
 
   const createReq = (headers: Record<string, string> = {}): Request =>
-    ({ headers } as Request);
-  const createRes = (): Response => ({} as Response);
+    ({ headers }) as Request;
+  const createRes = (): Response => ({}) as Response;
   const createNext = () => jest.fn();
 
   it('uses system config when no headers present', (done) => {
@@ -40,7 +40,7 @@ describe('DeliveryContextMiddleware', () => {
       expect(ctx.smsAdapter).toBe('twilio');
       expect(ctx.templateEngine).toBe('jinja2');
       expect(ctx.templateSource).toBe('local');
-      return fn() as unknown as ReturnType<typeof storage.run>;
+      return fn();
     });
 
     middleware.use(createReq(), createRes(), createNext());
@@ -54,7 +54,7 @@ describe('DeliveryContextMiddleware', () => {
     const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
       expect(ctx.emailAdapter).toBe('ches');
       expect(ctx.smsAdapter).toBe('twilio');
-      return fn() as unknown as ReturnType<typeof storage.run>;
+      return fn();
     });
 
     middleware.use(
@@ -72,7 +72,7 @@ describe('DeliveryContextMiddleware', () => {
     const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
       expect(ctx.emailAdapter).toBe('nodemailer');
       expect(ctx.smsAdapter).toBe('gc-notify');
-      return fn() as unknown as ReturnType<typeof storage.run>;
+      return fn();
     });
 
     middleware.use(
@@ -90,7 +90,7 @@ describe('DeliveryContextMiddleware', () => {
     const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
       expect(ctx.emailAdapter).toBe('gc-notify');
       expect(ctx.smsAdapter).toBe('gc-notify');
-      return fn() as unknown as ReturnType<typeof storage.run>;
+      return fn();
     });
 
     middleware.use(
@@ -117,7 +117,7 @@ describe('DeliveryContextMiddleware', () => {
 
     const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
       expect(ctx.emailAdapter).toBe('nodemailer');
-      return fn() as unknown as ReturnType<typeof storage.run>;
+      return fn();
     });
 
     middleware.use(
@@ -134,7 +134,7 @@ describe('DeliveryContextMiddleware', () => {
   it('normalizes header value to lowercase', (done) => {
     const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
       expect(ctx.emailAdapter).toBe('ches');
-      return fn() as unknown as ReturnType<typeof storage.run>;
+      return fn();
     });
 
     middleware.use(
@@ -154,7 +154,7 @@ describe('DeliveryContextMiddleware', () => {
 
     jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
       ctxInsideNext = ctx;
-      return fn() as unknown as ReturnType<typeof storage.run>;
+      return fn();
     });
 
     middleware.use(createReq(), createRes(), next);

@@ -65,7 +65,9 @@ export class GcNotifyApiClient {
       try {
         errData = JSON.parse(errBody) as GcNotifyErrorResponse;
       } catch {
-        // ignore
+        this.logger.debug(
+          `GC Notify API returned non-JSON error body: ${errBody.slice(0, 100)}`,
+        );
       }
 
       const message =
@@ -93,12 +95,22 @@ export class GcNotifyApiClient {
 
   private mapPersonalisation(
     personalisation?: Record<string, string | FileAttachment>,
-  ): Record<string, string | { file: string; filename: string; sending_method: 'attach' | 'link' }> | undefined {
+  ):
+    | Record<
+        string,
+        | string
+        | { file: string; filename: string; sending_method: 'attach' | 'link' }
+      >
+    | undefined {
     if (!personalisation || Object.keys(personalisation).length === 0) {
       return undefined;
     }
 
-    const result: Record<string, string | { file: string; filename: string; sending_method: 'attach' | 'link' }> = {};
+    const result: Record<
+      string,
+      | string
+      | { file: string; filename: string; sending_method: 'attach' | 'link' }
+    > = {};
     for (const [key, value] of Object.entries(personalisation)) {
       if (typeof value === 'string') {
         result[key] = value;
@@ -208,10 +220,7 @@ export class GcNotifyApiClient {
     return { templates };
   }
 
-  async getTemplate(
-    templateId: string,
-    authHeader: string,
-  ): Promise<Template> {
+  async getTemplate(templateId: string, authHeader: string): Promise<Template> {
     const raw = await this.request<Record<string, unknown>>(
       'GET',
       `/v2/template/${templateId}`,
@@ -221,24 +230,35 @@ export class GcNotifyApiClient {
     return this.mapTemplate(raw);
   }
 
+  private toSafeString(value: unknown): string {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean')
+      return String(value);
+    return '';
+  }
+
   private mapTemplate(raw: Record<string, unknown>): Template {
     return {
-      id: String(raw.id ?? ''),
-      name: String(raw.name ?? ''),
-      description: raw.description != null ? String(raw.description) : undefined,
+      id: this.toSafeString(raw.id),
+      name: this.toSafeString(raw.name),
+      description:
+        raw.description != null
+          ? this.toSafeString(raw.description)
+          : undefined,
       type: (raw.type as 'sms' | 'email') ?? 'email',
-      subject: raw.subject != null ? String(raw.subject) : undefined,
-      body: String(raw.body ?? ''),
+      subject: raw.subject != null ? this.toSafeString(raw.subject) : undefined,
+      body: this.toSafeString(raw.body),
       personalisation:
         raw.personalisation != null
           ? (raw.personalisation as Record<string, string>)
           : undefined,
       active: raw.active !== false,
-      created_at: String(raw.created_at ?? new Date().toISOString()),
+      created_at: this.toSafeString(raw.created_at) || new Date().toISOString(),
       updated_at:
-        raw.updated_at != null ? String(raw.updated_at) : undefined,
+        raw.updated_at != null ? this.toSafeString(raw.updated_at) : undefined,
       created_by:
-        raw.created_by != null ? String(raw.created_by) : undefined,
+        raw.created_by != null ? this.toSafeString(raw.created_by) : undefined,
     };
   }
 }

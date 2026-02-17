@@ -22,7 +22,7 @@ export class HealthController {
     description: 'Service is ready to receive traffic',
   })
   ready() {
-    // TODO: Add database connectivity check
+    // TODO(BCNOTIFY): Add database connectivity check when persistence is added
     return {
       status: 'ready',
       timestamp: new Date().toISOString(),

@@ -43,7 +43,11 @@ describe('DeliveryContextService', () => {
 
   it('getTemplateSource returns context templateSource or local', () => {
     storage.run(
-      { emailAdapter: 'nodemailer', smsAdapter: 'twilio', templateSource: 'local' },
+      {
+        emailAdapter: 'nodemailer',
+        smsAdapter: 'twilio',
+        templateSource: 'local',
+      },
       () => {
         expect(service.getTemplateSource()).toBe('local');
       },
@@ -73,12 +77,9 @@ describe('DeliveryContextService', () => {
       },
     );
 
-    storage.run(
-      { emailAdapter: 'nodemailer', smsAdapter: 'twilio' },
-      () => {
-        expect(service.getTemplateEngine()).toBe('jinja2');
-      },
-    );
+    storage.run({ emailAdapter: 'nodemailer', smsAdapter: 'twilio' }, () => {
+      expect(service.getTemplateEngine()).toBe('jinja2');
+    });
   });
 
   it('throws when context is not set', () => {

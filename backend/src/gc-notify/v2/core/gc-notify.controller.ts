@@ -190,7 +190,9 @@ export class GcNotifyController {
     @Query('type') type?: 'sms' | 'email',
     @Req() req?: express.Request,
   ) {
-    const gcNotifyAuthHeader = req ? this.buildGcNotifyAuthHeader(req) : undefined;
+    const gcNotifyAuthHeader = req
+      ? this.buildGcNotifyAuthHeader(req)
+      : undefined;
     return this.gcNotifyService.getTemplates(type, gcNotifyAuthHeader);
   }
 
@@ -218,8 +220,7 @@ export class GcNotifyController {
 
   private buildGcNotifyAuthHeader(req: express.Request): string | undefined {
     const key =
-      req.headers['x-gc-notify-api-key'] ??
-      req.headers['X-GC-Notify-Api-Key'];
+      req.headers['x-gc-notify-api-key'] ?? req.headers['X-GC-Notify-Api-Key'];
     if (typeof key === 'string' && key.trim()) {
       return `ApiKey-v1 ${key.trim()}`;
     }

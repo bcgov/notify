@@ -9,16 +9,14 @@ export class NotificationsService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async sendEmail(dto: SendEmailDto): Promise<NotificationResponseDto> {
-    await Promise.resolve();
+  sendEmail(dto: SendEmailDto): Promise<NotificationResponseDto> {
     const notificationId = uuidv4();
     this.logger.log(
       `Creating email notification: ${notificationId} to ${dto.to}`,
     );
 
-    // TODO: Integrate with CHES provider
-    // For now, return a mock response
-    return {
+    // TODO(BCNOTIFY): Integrate with CHES provider when available
+    return Promise.resolve({
       id: notificationId,
       reference: dto.reference,
       content: {
@@ -32,19 +30,17 @@ export class NotificationsService {
         version: 1,
         uri: `/v2/templates/${dto.template_id}`,
       },
-    };
+    });
   }
 
-  async sendSms(dto: SendSmsDto): Promise<NotificationResponseDto> {
-    await Promise.resolve();
+  sendSms(dto: SendSmsDto): Promise<NotificationResponseDto> {
     const notificationId = uuidv4();
     this.logger.log(
       `Creating SMS notification: ${notificationId} to ${dto.phone_number}`,
     );
 
-    // TODO: Integrate with Twilio provider
-    // For now, return a mock response
-    return {
+    // TODO(BCNOTIFY): Integrate with Twilio provider when available
+    return Promise.resolve({
       id: notificationId,
       reference: dto.reference,
       content: {
@@ -58,15 +54,15 @@ export class NotificationsService {
         version: 1,
         uri: `/v2/templates/${dto.template_id}`,
       },
-    };
+    });
   }
 
-  async getNotification(id: string): Promise<NotificationResponseDto> {
-    await Promise.resolve();
+  getNotification(id: string): Promise<NotificationResponseDto> {
     this.logger.log(`Fetching notification: ${id}`);
 
-    // TODO: Fetch from database
-    // For now, return a mock status response
-    throw new NotFoundException(`Notification ${id} not found`);
+    // TODO(BCNOTIFY): Fetch from database when persistence layer is added
+    return Promise.reject(
+      new NotFoundException(`Notification ${id} not found`),
+    );
   }
 }

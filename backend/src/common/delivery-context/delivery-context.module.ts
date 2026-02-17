@@ -14,12 +14,14 @@ import { DeliveryAdapterResolver } from './delivery-adapter.resolver';
     DeliveryContextService,
     DeliveryAdapterResolver,
   ],
-  exports: [DeliveryContextService, DeliveryAdapterResolver, DeliveryContextStorage],
+  exports: [
+    DeliveryContextService,
+    DeliveryAdapterResolver,
+    DeliveryContextStorage,
+  ],
 })
 export class DeliveryContextModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(DeliveryContextMiddleware)
-      .forRoutes('*');
+    consumer.apply(DeliveryContextMiddleware).forRoutes('*');
   }
 }
