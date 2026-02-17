@@ -47,6 +47,12 @@ export class GcNotifyController {
 
   @Get('notifications')
   @ApiOperation({ summary: 'Get list of notifications' })
+  @ApiHeader({
+    name: 'X-GC-Notify-Api-Key',
+    required: false,
+    description:
+      'Required when using GC Notify facade mode. Your GC Notify API key.',
+  })
   @ApiQuery({ name: 'template_type', required: false, enum: ['sms', 'email'] })
   @ApiQuery({
     name: 'status',
@@ -76,6 +82,7 @@ export class GcNotifyController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getNotifications(
+    @Req() req: express.Request,
     @Query('template_type') templateType?: 'sms' | 'email',
     @Query('status') status?: string | string[],
     @Query('reference') reference?: string,
@@ -87,13 +94,17 @@ export class GcNotifyController {
       : status
         ? [status]
         : undefined;
-    return this.gcNotifyService.getNotifications({
-      template_type: templateType,
-      status: statusArray,
-      reference,
-      older_than: olderThan,
-      include_jobs: includeJobs,
-    });
+    const gcNotifyAuthHeader = this.buildGcNotifyAuthHeader(req);
+    return this.gcNotifyService.getNotifications(
+      {
+        template_type: templateType,
+        status: statusArray,
+        reference,
+        older_than: olderThan,
+        include_jobs: includeJobs,
+      },
+      gcNotifyAuthHeader,
+    );
   }
 
   @Post('notifications/email')
@@ -149,26 +160,48 @@ export class GcNotifyController {
   @Post('notifications/bulk')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Send a batch of notifications' })
+  @ApiHeader({
+    name: 'X-GC-Notify-Api-Key',
+    required: false,
+    description:
+      'Required when using GC Notify facade mode. Your GC Notify API key.',
+  })
   @ApiResponse({
     status: 201,
     description: 'Bulk job created successfully',
     type: PostBulkResponse,
   })
   @ApiResponse({ status: 400, description: 'Bad request' })
-  async sendBulk(@Body() body: PostBulkRequest) {
-    return this.gcNotifyService.sendBulk(body);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
+  async sendBulk(@Body() body: PostBulkRequest, @Req() req: express.Request) {
+    const gcNotifyAuthHeader = this.buildGcNotifyAuthHeader(req);
+    return this.gcNotifyService.sendBulk(body, gcNotifyAuthHeader);
   }
 
   @Get('notifications/:notificationId')
   @ApiOperation({ summary: 'Get notification by ID' })
+  @ApiHeader({
+    name: 'X-GC-Notify-Api-Key',
+    required: false,
+    description:
+      'Required when using GC Notify facade mode. Your GC Notify API key.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Notification retrieved successfully',
     type: Notification,
   })
   @ApiResponse({ status: 404, description: 'Notification not found' })
-  async getNotificationById(@Param('notificationId') notificationId: string) {
-    return this.gcNotifyService.getNotificationById(notificationId);
+  async getNotificationById(
+    @Param('notificationId') notificationId: string,
+    @Req() req: express.Request,
+  ) {
+    const gcNotifyAuthHeader = this.buildGcNotifyAuthHeader(req);
+    return this.gcNotifyService.getNotificationById(
+      notificationId,
+      gcNotifyAuthHeader,
+    );
   }
 
   @Get('templates')

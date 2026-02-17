@@ -65,25 +65,46 @@ export class GcNotifyService {
     @Inject(SENDER_STORE) private readonly senderStore: ISenderStore,
   ) {}
 
-  getNotifications(query: {
-    template_type?: 'sms' | 'email';
-    status?: string[];
-    reference?: string;
-    older_than?: string;
-    include_jobs?: boolean;
-  }): Promise<{ notifications: Notification[]; links: Links }> {
+  async getNotifications(
+    query: {
+      template_type?: 'sms' | 'email';
+      status?: string[];
+      reference?: string;
+      older_than?: string;
+      include_jobs?: boolean;
+    },
+    authHeader?: string,
+  ): Promise<{ notifications: Notification[]; links: Links }> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+      return await this.gcNotifyApiClient.getNotifications(query, authHeader);
+    }
+
     this.logger.log('Getting notifications list', { query });
-    return Promise.resolve({
+    return {
       notifications: [],
       links: { current: '/gc-notify/v2/notifications' },
-    });
+    };
   }
 
-  getNotificationById(notificationId: string): Promise<Notification> {
+  async getNotificationById(
+    notificationId: string,
+    authHeader?: string,
+  ): Promise<Notification> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+      return await this.gcNotifyApiClient.getNotificationById(
+        notificationId,
+        authHeader,
+      );
+    }
+
     this.logger.log(`Getting notification: ${notificationId}`);
-    return Promise.reject(
-      new NotFoundException('Notification not found in database'),
-    );
+    throw new NotFoundException('Notification not found in database');
   }
 
   async sendEmail(
@@ -132,7 +153,7 @@ export class GcNotifyService {
       defaultSubject,
     });
 
-    const subject = body.subject ?? rendered.subject ?? defaultSubject;
+    const subject = rendered.subject ?? defaultSubject;
 
     const sender = await this.resolveEmailSender(body.email_reply_to_id);
     const emailAdapterKey = this.deliveryContextService.getEmailAdapterKey();
@@ -296,22 +317,34 @@ export class GcNotifyService {
     return defaultSender ?? null;
   }
 
-  sendBulk(body: PostBulkRequest): Promise<PostBulkResponse> {
+  async sendBulk(
+    body: PostBulkRequest,
+    authHeader?: string,
+  ): Promise<PostBulkResponse> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+      return await this.gcNotifyApiClient.sendBulk(body, authHeader);
+    }
+
     if (!body.rows && !body.csv) {
-      return Promise.reject(
-        new BadRequestException('You should specify either rows or csv'),
-      );
+      throw new BadRequestException('You should specify either rows or csv');
     }
 
     const rowCount = body.rows
       ? body.rows.length - 1
       : (body.csv?.split('\n').length ?? 1) - 1;
 
+    if (rowCount < 1) {
+      throw new BadRequestException(
+        'rows must have at least a header row and one data row (1-50,000 recipients)',
+      );
+    }
+
     if (rowCount > 50000) {
-      return Promise.reject(
-        new BadRequestException(
-          'Too many rows. Maximum number of rows allowed is 50000',
-        ),
+      throw new BadRequestException(
+        'Too many rows. Maximum number of rows allowed is 50000',
       );
     }
 
@@ -327,7 +360,7 @@ export class GcNotifyService {
       created_at: now,
     };
 
-    return Promise.resolve({ data });
+    return { data };
   }
 
   async getTemplates(

@@ -115,6 +115,9 @@ describe('GcNotifyService', () => {
       sendSms: jest.fn(),
       getTemplates: jest.fn(),
       getTemplate: jest.fn(),
+      getNotifications: jest.fn(),
+      getNotificationById: jest.fn(),
+      sendBulk: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -287,6 +290,16 @@ describe('GcNotifyService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('sendBulk throws BadRequestException when rows has only header (no data rows)', async () => {
+    await expect(
+      service.sendBulk({
+        template_id: 't-email',
+        name: 'Job',
+        rows: [['email address', 'name']],
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('sendBulk throws BadRequestException when row count exceeds 50000', async () => {
     const header = ['email', 'name'];
     const rows = Array.from({ length: 50001 }, (_, i) => [
@@ -301,6 +314,18 @@ describe('GcNotifyService', () => {
         rows: [header, ...rows],
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('getNotifications returns empty list when not in facade mode', async () => {
+    const result = await service.getNotifications({});
+    expect(result.notifications).toEqual([]);
+    expect(result.links.current).toBe('/gc-notify/v2/notifications');
+  });
+
+  it('getNotificationById throws NotFoundException when not in facade mode', async () => {
+    await expect(service.getNotificationById('any-id')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('getTemplates returns all templates when no type filter', async () => {
@@ -446,5 +471,156 @@ describe('GcNotifyService', () => {
     await expect(service.getTemplate(created.id)).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  describe('when in GC Notify facade mode', () => {
+    let facadeService: GcNotifyService;
+    let facadeClient: {
+      getNotifications: jest.Mock;
+      getNotificationById: jest.Mock;
+      sendBulk: jest.Mock;
+    };
+
+    beforeEach(async () => {
+      facadeClient = {
+        getNotifications: jest.fn(),
+        getNotificationById: jest.fn(),
+        sendBulk: jest.fn(),
+      };
+      const deliveryContextService = {
+        getEmailAdapterKey: () => 'gc-notify',
+        getSmsAdapterKey: () => 'gc-notify',
+        getTemplateSource: () => 'gc-notify-api',
+        getTemplateEngine: () => 'jinja2',
+      };
+      const gcNotifyApiClient = {
+        sendEmail: jest.fn(),
+        sendSms: jest.fn(),
+        getTemplates: jest.fn(),
+        getTemplate: jest.fn(),
+        getNotifications: facadeClient.getNotifications,
+        getNotificationById: facadeClient.getNotificationById,
+        sendBulk: facadeClient.sendBulk,
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          GcNotifyService,
+          InMemoryTemplateStore,
+          InMemoryTemplateResolver,
+          { provide: ConfigService, useValue: { get: configGetMock } },
+          {
+            provide: DeliveryAdapterResolver,
+            useValue: {
+              getEmailAdapter: () => 'gc-notify-client',
+              getSmsAdapter: () => 'gc-notify-client',
+            },
+          },
+          { provide: DeliveryContextService, useValue: deliveryContextService },
+          { provide: GcNotifyApiClient, useValue: gcNotifyApiClient },
+          { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
+          { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
+          { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
+          { provide: SENDER_STORE, useClass: InMemorySenderStore },
+        ],
+      }).compile();
+
+      facadeService = module.get(GcNotifyService);
+    });
+
+    it('getNotifications passes through to client when auth provided', async () => {
+      const mockResult = {
+        notifications: [
+          {
+            id: 'n-1',
+            type: 'email',
+            status: 'delivered',
+            body: 'Hi',
+            template: {
+              id: 't-1',
+              version: 1,
+              uri: '/gc-notify/v2/templates/t-1',
+            },
+            created_at: '2025-01-01',
+          },
+        ],
+        links: { current: '/gc-notify/v2/notifications', next: undefined },
+      };
+      facadeClient.getNotifications.mockResolvedValue(mockResult);
+
+      const result = await facadeService.getNotifications(
+        { template_type: 'email' },
+        'ApiKey-v1 test-key',
+      );
+
+      expect(facadeClient.getNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({ template_type: 'email' }),
+        'ApiKey-v1 test-key',
+      );
+      expect(result).toEqual(mockResult);
+    });
+
+    it('getNotificationById passes through to client when auth provided', async () => {
+      const mockNotification = {
+        id: 'n-1',
+        type: 'email',
+        status: 'delivered',
+        body: 'Hi',
+        template: { id: 't-1', version: 1, uri: '/gc-notify/v2/templates/t-1' },
+        created_at: '2025-01-01',
+      };
+      facadeClient.getNotificationById.mockResolvedValue(mockNotification);
+
+      const result = await facadeService.getNotificationById(
+        'n-1',
+        'ApiKey-v1 test-key',
+      );
+
+      expect(facadeClient.getNotificationById).toHaveBeenCalledWith(
+        'n-1',
+        'ApiKey-v1 test-key',
+      );
+      expect(result).toEqual(mockNotification);
+    });
+
+    it('sendBulk passes through to client when auth provided', async () => {
+      const mockResponse = {
+        data: {
+          id: 'job-1',
+          template: 't-1',
+          job_status: 'pending',
+          notification_count: 2,
+          created_at: '2025-01-01',
+        },
+      };
+      facadeClient.sendBulk.mockResolvedValue(mockResponse);
+
+      const result = await facadeService.sendBulk(
+        {
+          template_id: 't-1',
+          name: 'Bulk Job',
+          rows: [
+            ['email address', 'name'],
+            ['a@b.com', 'Alice'],
+            ['b@c.com', 'Bob'],
+          ],
+        },
+        'ApiKey-v1 test-key',
+      );
+
+      expect(facadeClient.sendBulk).toHaveBeenCalledWith(
+        expect.objectContaining({
+          template_id: 't-1',
+          name: 'Bulk Job',
+          rows: [
+            ['email address', 'name'],
+            ['a@b.com', 'Alice'],
+            ['b@c.com', 'Bob'],
+          ],
+        }),
+        'ApiKey-v1 test-key',
+      );
+      expect(result).toEqual(mockResponse);
+    });
   });
 });
