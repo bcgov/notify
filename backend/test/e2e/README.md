@@ -48,8 +48,8 @@ E2E_LOCAL_ENV_FILE=path/to/.env.local npm run test:e2e:integration
 
 The GC Notify full-flow test (`full flow: create sender → create template → send email → validate delivery`) exercises the complete business case:
 
-1. **Create sender** — POST `/gc-notify/v2/senders`, asserts response
-2. **Create template** — POST `/gc-notify/v2/templates`, asserts response
+1. **Create sender** — POST `/v1/senders`, asserts response
+2. **Create template** — POST `/v1/templates`, asserts response
 3. **Send email** — POST `/gc-notify/v2/notifications/email`, asserts response
 4. **Validate delivery** — Provider-specific; runs only when configured
 

@@ -31,6 +31,7 @@ const apiKey = process.env.E2E_API_KEY || process.env.API_KEY || '';
 const mailpitUrl = process.env.E2E_MAILPIT_URL;
 
 const gcNotify = (path: string) => `${baseUrl}/gc-notify/v2${path}`;
+const v1 = (path: string) => `${baseUrl}/v1${path}`;
 
 function authHeaders(): Record<string, string> {
   if (!apiKey) return {};
@@ -146,12 +147,12 @@ async function main(): Promise<void> {
   try {
     // ─── Step 1: Create sender ────────────────────────────────────────────
     step(1, 'Create a sender identity');
-    sub('POST /gc-notify/v2/senders');
+    sub('POST /v1/senders');
     sub(
       'We register an email address that will appear as the "From" for our notifications.',
     );
 
-    const createSenderRes = await fetch(gcNotify('/senders'), {
+    const createSenderRes = await fetch(v1('/senders'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -188,12 +189,12 @@ async function main(): Promise<void> {
 
     // ─── Step 2: Create template ────────────────────────────────────────────
     step(2, 'Create a reusable email template');
-    sub('POST /gc-notify/v2/templates');
+    sub('POST /v1/templates');
     sub(
       'Templates use placeholders (e.g. {{name}}) that are filled when sending.',
     );
 
-    const createTemplateRes = await fetch(gcNotify('/templates'), {
+    const createTemplateRes = await fetch(v1('/templates'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

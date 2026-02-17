@@ -68,6 +68,17 @@ export class MyService {
 | `ejs` | `<%= name %>` | EJS (Embedded JavaScript) |
 | `mustache` | `{{ name }}` | Mustache (logic-less) |
 
+## Storage (templates, senders)
+
+AdaptersModule provides in-memory storage for templates and senders, used by [TemplatesModule](../templates/templates.module.ts) and [SendersModule](../senders/senders.module.ts):
+
+| Provider | Implementation | Purpose |
+|----------|----------------|---------|
+| `InMemoryTemplateStore` | In-memory map | Template storage for v1/templates CRUD |
+| `SENDER_STORE` | `InMemorySenderStore` | Sender storage for v1/senders CRUD |
+
+Inject via `InMemoryTemplateStore` (class) or `SENDER_STORE` (token) from `../adapters/tokens`.
+
 ## Structure
 
 ```

@@ -7,6 +7,7 @@ import {
 const { baseUrl, apiKey, mailpitUrl } = e2eConfig;
 
 const gcNotify = (path: string) => `${baseUrl}/gc-notify/v2${path}`;
+const v1 = (path: string) => `${baseUrl}/v1${path}`;
 
 interface NotificationsListBody {
   notifications?: unknown[];
@@ -56,40 +57,60 @@ interface NotificationResponseBody {
   scheduled_for?: string;
 }
 
-/** Fetch latest message from Mailpit API (for delivery validation). */
-async function getLatestMailpitMessage(): Promise<{
+type MailpitMessage = {
   ID?: string;
-  To?: Array<{ Address?: string; Name?: string }>;
-  From?: { Address?: string; Name?: string };
+  To?: Array<{ Address?: string; Email?: string; Name?: string }>;
+  From?: { Address?: string; Email?: string; Name?: string };
   Subject?: string;
   Snippet?: string;
-} | null> {
+};
+
+/** Fetch latest message from Mailpit API (for delivery validation). */
+async function getLatestMailpitMessage(): Promise<MailpitMessage | null> {
   if (!mailpitUrl) return null;
   try {
     const res = await fetch(`${mailpitUrl}/api/v1/message/latest`);
     if (!res.ok) return null;
-    return (await res.json()) as {
-      ID?: string;
-      To?: Array<{ Address?: string; Name?: string }>;
-      From?: { Address?: string; Name?: string };
-      Subject?: string;
-      Snippet?: string;
-    };
+    return (await res.json()) as MailpitMessage;
   } catch {
     return null;
   }
 }
 
-/** Fetch latest message body (text) from Mailpit view API. */
-async function getLatestMailpitMessageBody(): Promise<string | null> {
+/** Fetch message by recipient using Mailpit search (more reliable when multiple tests send). */
+async function getMailpitMessageByRecipient(
+  recipientEmail: string,
+): Promise<MailpitMessage | null> {
   if (!mailpitUrl) return null;
   try {
-    const res = await fetch(`${mailpitUrl}/view/latest.txt`);
-    if (!res.ok) return null;
-    return await res.text();
+    const searchRes = await fetch(
+      `${mailpitUrl}/api/v1/search?query=${encodeURIComponent(`to:${recipientEmail}`)}&limit=1`,
+    );
+    if (!searchRes.ok) return null;
+    const searchBody = (await searchRes.json()) as {
+      messages?: Array<{ ID?: string }>;
+    };
+    const msgId = searchBody.messages?.[0]?.ID;
+    if (!msgId) return null;
+    const msgRes = await fetch(`${mailpitUrl}/api/v1/message/${msgId}`);
+    if (!msgRes.ok) return null;
+    return (await msgRes.json()) as MailpitMessage;
   } catch {
     return null;
   }
+}
+
+/** Check if message To array contains recipient (handles Address or Email field). */
+function messageToContains(
+  msg: MailpitMessage | null,
+  recipientEmail: string,
+): boolean {
+  if (!msg?.To?.length) return false;
+  return msg.To.some(
+    (t) =>
+      (t.Address ?? t.Email ?? '').toLowerCase() ===
+      recipientEmail.toLowerCase(),
+  );
 }
 
 describe('GC Notify (integration)', () => {
@@ -127,10 +148,10 @@ describe('GC Notify (integration)', () => {
     expect(Array.isArray(body.templates)).toBe(true);
   });
 
-  it('POST /gc-notify/v2/templates creates template', async () => {
+  it('POST /v1/templates creates template', async () => {
     if (!apiKey) return;
 
-    const createRes = await fetch(gcNotify('/templates'), {
+    const createRes = await fetch(v1('/templates'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -158,7 +179,7 @@ describe('GC Notify (integration)', () => {
     const recipientEmail = `e2e-recipient-${Date.now()}@example.com`;
 
     // --- 1. Create sender ---
-    const createSenderRes = await fetch(gcNotify('/senders'), {
+    const createSenderRes = await fetch(v1('/senders'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -181,7 +202,7 @@ describe('GC Notify (integration)', () => {
     expect(sender.updated_at).toBeDefined();
 
     // --- 2. Create template ---
-    const createTemplateRes = await fetch(gcNotify('/templates'), {
+    const createTemplateRes = await fetch(v1('/templates'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -250,19 +271,30 @@ describe('GC Notify (integration)', () => {
     // --- 4. Validate delivery (provider-specific; Mailpit when E2E_MAILPIT_URL set) ---
     if (shouldValidateDeliveryViaMailpit()) {
       await new Promise((r) => setTimeout(r, 500));
-      const mailpitMessage = await getLatestMailpitMessage();
+      // Search by recipient to avoid picking up messages from other tests
+      const mailpitMessage =
+        (await getMailpitMessageByRecipient(recipientEmail)) ??
+        (await getLatestMailpitMessage());
       if (mailpitMessage) {
         expect(mailpitMessage.ID).toBeDefined();
-        expect(
-          mailpitMessage.To?.some((t) => t.Address === recipientEmail),
-        ).toBe(true);
-        expect(mailpitMessage.From?.Address).toBe('e2e-sender@example.com');
+        expect(messageToContains(mailpitMessage, recipientEmail)).toBe(true);
+        const fromAddr =
+          mailpitMessage.From?.Address ?? mailpitMessage.From?.Email ?? '';
+        expect(fromAddr).toBe('e2e-sender@example.com');
         expect(mailpitMessage.Subject).toBe('E2E Test: Hello World');
         const snippet = mailpitMessage.Snippet;
+        const msgId = mailpitMessage.ID ?? 'latest';
         const bodyContent =
           (snippet?.length ?? 0) > 0
             ? snippet
-            : await getLatestMailpitMessageBody();
+            : await (async () => {
+                try {
+                  const r = await fetch(`${mailpitUrl}/view/${msgId}.txt`);
+                  return r.ok ? await r.text() : '';
+                } catch {
+                  return '';
+                }
+              })();
         expect(bodyContent).toContain('Hello World');
         expect(bodyContent).toContain(e2eReference);
       }

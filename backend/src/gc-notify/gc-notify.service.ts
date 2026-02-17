@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
+import { BULK_MAX_RECIPIENTS } from './v2/core/constants';
 import {
   CreateEmailNotificationRequest,
   CreateSmsNotificationRequest,
@@ -18,24 +19,15 @@ import {
   PostBulkResponse,
   PostBulkJobData,
 } from './v2/core/schemas';
-import {
-  Sender,
-  CreateSenderRequest,
-  UpdateSenderRequest,
-  CreateTemplateRequest,
-  UpdateTemplateRequest,
-} from './v2/contrib/schemas';
 import type {
   ITemplateResolver,
   ITemplateRendererRegistry,
-  ISenderStore,
   StoredSender,
 } from '../adapters/interfaces';
 import {
   TEMPLATE_RESOLVER,
   TEMPLATE_RENDERER_REGISTRY,
   DEFAULT_TEMPLATE_ENGINE,
-  SENDER_STORE,
 } from '../adapters/tokens';
 import {
   DeliveryAdapterResolver,
@@ -43,9 +35,17 @@ import {
 } from '../common/delivery-context/delivery-adapter.resolver';
 import { DeliveryContextService } from '../common/delivery-context/delivery-context.service';
 import { GcNotifyApiClient } from './gc-notify-api.client';
-import { InMemoryTemplateStore } from '../adapters/implementations/storage/in-memory/in-memory-template.store';
-import type { StoredTemplate } from '../adapters/interfaces';
 import { FileAttachment } from './v2/core/schemas';
+import { TemplatesService } from '../templates/templates.service';
+import { SendersService } from '../senders/senders.service';
+import type {
+  CreateTemplateRequest,
+  UpdateTemplateRequest,
+} from '../templates/v1/core/schemas';
+import type {
+  CreateSenderRequest,
+  UpdateSenderRequest,
+} from '../senders/v1/core/schemas';
 
 @Injectable()
 export class GcNotifyService {
@@ -53,16 +53,16 @@ export class GcNotifyService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly templateStore: InMemoryTemplateStore,
     private readonly deliveryAdapterResolver: DeliveryAdapterResolver,
     private readonly deliveryContextService: DeliveryContextService,
     private readonly gcNotifyApiClient: GcNotifyApiClient,
+    private readonly templatesService: TemplatesService,
+    private readonly sendersService: SendersService,
     @Inject(TEMPLATE_RESOLVER)
     private readonly templateResolver: ITemplateResolver,
     @Inject(TEMPLATE_RENDERER_REGISTRY)
     private readonly rendererRegistry: ITemplateRendererRegistry,
     @Inject(DEFAULT_TEMPLATE_ENGINE) private readonly defaultEngine: string,
-    @Inject(SENDER_STORE) private readonly senderStore: ISenderStore,
   ) {}
 
   async getNotifications(
@@ -293,28 +293,18 @@ export class GcNotifyService {
     senderId?: string,
   ): Promise<StoredSender | null> {
     if (senderId) {
-      return this.senderStore.getById(senderId);
+      return this.sendersService.findById(senderId);
     }
-    const defaultSender = this.senderStore
-      .getAll()
-      .find(
-        (s) => (s.type === 'email' || s.type === 'email+sms') && s.is_default,
-      );
-    return defaultSender ?? null;
+    return this.sendersService.getDefaultSender('email');
   }
 
   private async resolveSmsSender(
     senderId?: string,
   ): Promise<StoredSender | null> {
     if (senderId) {
-      return this.senderStore.getById(senderId);
+      return this.sendersService.findById(senderId);
     }
-    const defaultSender = this.senderStore
-      .getAll()
-      .find(
-        (s) => (s.type === 'sms' || s.type === 'email+sms') && s.is_default,
-      );
-    return defaultSender ?? null;
+    return this.sendersService.getDefaultSender('sms');
   }
 
   async sendBulk(
@@ -342,9 +332,9 @@ export class GcNotifyService {
       );
     }
 
-    if (rowCount > 50000) {
+    if (rowCount > BULK_MAX_RECIPIENTS) {
       throw new BadRequestException(
-        'Too many rows. Maximum number of rows allowed is 50000',
+        `Too many rows. Maximum number of rows allowed is ${BULK_MAX_RECIPIENTS}`,
       );
     }
 
@@ -374,12 +364,7 @@ export class GcNotifyService {
       return this.gcNotifyApiClient.getTemplates(type, authHeader);
     }
 
-    this.logger.log('Getting templates list');
-    let templates = this.templateStore.getAll();
-    if (type) {
-      templates = templates.filter((t) => t.type === type);
-    }
-    return { templates };
+    return this.templatesService.getTemplates(type);
   }
 
   async getTemplate(
@@ -393,160 +378,42 @@ export class GcNotifyService {
       return this.gcNotifyApiClient.getTemplate(templateId, authHeader);
     }
 
-    this.logger.log(`Getting template: ${templateId}`);
-    const template = await this.templateStore.getById(templateId);
-    if (!template) {
-      throw new NotFoundException('Template not found in database');
-    }
-    return template;
+    return this.templatesService.getTemplate(templateId);
   }
 
-  // --- Senders CRUD (Extension: Management) ---
+  // --- Senders CRUD (delegates to SendersService) ---
 
-  getSenders(
-    type?: 'email' | 'sms' | 'email+sms',
-  ): Promise<{ senders: Sender[] }> {
-    this.logger.log('Getting senders list');
-    let senders = this.senderStore.getAll();
-    if (type) {
-      senders = senders.filter(
-        (s) => s.type === type || s.type === 'email+sms',
-      );
-    }
-    return Promise.resolve({ senders });
+  getSenders(type?: 'email' | 'sms' | 'email+sms') {
+    return this.sendersService.getSenders(type);
   }
 
-  async getSender(senderId: string): Promise<Sender> {
-    this.logger.log(`Getting sender: ${senderId}`);
-    const sender = await this.senderStore.getById(senderId);
-    if (!sender) {
-      throw new NotFoundException('Sender not found');
-    }
-    return sender;
+  getSender(senderId: string) {
+    return this.sendersService.getSender(senderId);
   }
 
-  createSender(body: CreateSenderRequest): Promise<Sender> {
-    try {
-      this.validateSenderFields(body);
-    } catch (err) {
-      return Promise.reject(
-        err instanceof Error ? err : new Error(String(err)),
-      );
-    }
-    const id = uuidv4();
-    const now = new Date().toISOString();
-    const sender: StoredSender = {
-      id,
-      type: body.type,
-      email_address: body.email_address,
-      sms_sender: body.sms_sender,
-      is_default: body.is_default ?? false,
-      created_at: now,
-      updated_at: now,
-    };
-    this.senderStore.set(id, sender);
-    this.logger.log(`Created sender: ${id}`);
-    return Promise.resolve(sender);
+  createSender(body: CreateSenderRequest) {
+    return this.sendersService.createSender(body);
   }
 
-  async updateSender(
-    senderId: string,
-    body: UpdateSenderRequest,
-  ): Promise<Sender> {
-    const existing = await this.senderStore.getById(senderId);
-    if (!existing) {
-      throw new NotFoundException('Sender not found');
-    }
-    const merged = { ...existing, ...body };
-    this.validateSenderFields(merged as CreateSenderRequest);
-    const updated: StoredSender = {
-      ...existing,
-      ...body,
-      updated_at: new Date().toISOString(),
-    };
-    this.senderStore.set(senderId, updated);
-    this.logger.log(`Updated sender: ${senderId}`);
-    return updated;
+  updateSender(senderId: string, body: UpdateSenderRequest) {
+    return this.sendersService.updateSender(senderId, body);
   }
 
-  deleteSender(senderId: string): Promise<void> {
-    if (!this.senderStore.has(senderId)) {
-      return Promise.reject(new NotFoundException('Sender not found'));
-    }
-    this.senderStore.delete(senderId);
-    this.logger.log(`Deleted sender: ${senderId}`);
-    return Promise.resolve();
+  deleteSender(senderId: string) {
+    return this.sendersService.deleteSender(senderId);
   }
 
-  private validateSenderFields(body: CreateSenderRequest): void {
-    if (body.type === 'email' || body.type === 'email+sms') {
-      if (!body.email_address) {
-        throw new BadRequestException(
-          'email_address is required when type is email or email+sms',
-        );
-      }
-    }
-    if (body.type === 'sms' || body.type === 'email+sms') {
-      if (!body.sms_sender) {
-        throw new BadRequestException(
-          'sms_sender is required when type is sms or email+sms',
-        );
-      }
-    }
+  // --- Templates CRUD (delegates to TemplatesService) ---
+
+  createTemplate(body: CreateTemplateRequest) {
+    return this.templatesService.createTemplate(body);
   }
 
-  // --- Templates CRUD (Extension: Management) ---
-
-  createTemplate(body: CreateTemplateRequest): Promise<Template> {
-    const id = uuidv4();
-    const now = new Date().toISOString();
-    const template: StoredTemplate = {
-      id,
-      name: body.name,
-      description: body.description,
-      type: body.type,
-      subject: body.subject,
-      body: body.body,
-      personalisation: body.personalisation,
-      active: body.active ?? true,
-      engine: body.engine,
-      created_at: now,
-      updated_at: now,
-      version: 1,
-    };
-    this.templateStore.set(id, template);
-    this.logger.log(`Created template: ${id}`);
-    return Promise.resolve(template);
+  updateTemplate(templateId: string, body: UpdateTemplateRequest) {
+    return this.templatesService.updateTemplate(templateId, body);
   }
 
-  async updateTemplate(
-    templateId: string,
-    body: UpdateTemplateRequest,
-  ): Promise<Template> {
-    const existing = await this.templateStore.getById(templateId);
-    if (!existing) {
-      throw new NotFoundException('Template not found in database');
-    }
-    const stored = existing;
-    const updated: StoredTemplate = {
-      ...stored,
-      ...body,
-      updated_at: new Date().toISOString(),
-      version: stored.version + 1,
-    };
-    this.templateStore.set(templateId, updated);
-    this.logger.log(`Updated template: ${templateId}`);
-    return updated;
-  }
-
-  deleteTemplate(templateId: string): Promise<void> {
-    if (!this.templateStore.has(templateId)) {
-      return Promise.reject(
-        new NotFoundException('Template not found in database'),
-      );
-    }
-    this.templateStore.delete(templateId);
-    this.logger.log(`Deleted template: ${templateId}`);
-    return Promise.resolve();
+  deleteTemplate(templateId: string) {
+    return this.templatesService.deleteTemplate(templateId);
   }
 }

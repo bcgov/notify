@@ -9,10 +9,6 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * Request schema for creating a sender.
- * Extension: Management schema - not part of the official GC Notify API.
- */
 export class CreateSenderRequest {
   @ApiProperty({
     description: 'Sender type',

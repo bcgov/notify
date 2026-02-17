@@ -12,7 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "lint": "eslint \"{src,apps,libs,test,scripts}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -23,7 +23,8 @@
     "test:e2e:staging": "E2E_ENV_FILE=test/e2e/env.staging npm run test:e2e:integration",
     "demo": "npx ts-node scripts/demo/business-scenario.ts",
     "demo:staging": "DEMO_ENV_FILE=test/e2e/env.staging npx ts-node scripts/demo/business-scenario.ts",
-    "demo:dual-transport": "npx ts-node scripts/demo/dual-transport-demo.ts"
+    "demo:dual-transport": "npx ts-node scripts/demo/dual-transport-demo.ts",
+    "demo:dual-email-adapter": "npx ts-node scripts/demo/dual-email-adapter-demo.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

@@ -1,9 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * Sender entity for email reply-to and SMS sender configuration.
- * Extension: Management schema - not part of the official GC Notify API.
- */
 export class Sender {
   @ApiProperty({
     description: 'Unique identifier for the sender',

@@ -58,49 +58,45 @@ describe('DeliveryAdapterResolver', () => {
     resolver = module.get(DeliveryAdapterResolver);
   });
 
-  describe('getEmailAdapter', () => {
-    it('returns GC_NOTIFY_CLIENT when key is gc-notify', () => {
-      contextService.getEmailAdapterKey.mockReturnValue('gc-notify');
+  it('getEmailAdapter returns GC_NOTIFY_CLIENT when key is gc-notify', () => {
+    contextService.getEmailAdapterKey.mockReturnValue('gc-notify');
 
-      expect(resolver.getEmailAdapter()).toBe(GC_NOTIFY_CLIENT);
-    });
-
-    it('returns ches adapter when key is ches', () => {
-      contextService.getEmailAdapterKey.mockReturnValue('ches');
-
-      expect(resolver.getEmailAdapter()).toBe(mockChes);
-    });
-
-    it('returns nodemailer adapter when key is nodemailer', () => {
-      contextService.getEmailAdapterKey.mockReturnValue('nodemailer');
-
-      expect(resolver.getEmailAdapter()).toBe(mockNodemailer);
-    });
-
-    it('falls back to nodemailer when key is unknown', () => {
-      contextService.getEmailAdapterKey.mockReturnValue('unknown');
-
-      expect(resolver.getEmailAdapter()).toBe(mockNodemailer);
-    });
+    expect(resolver.getEmailAdapter()).toBe(GC_NOTIFY_CLIENT);
   });
 
-  describe('getSmsAdapter', () => {
-    it('returns GC_NOTIFY_CLIENT when key is gc-notify', () => {
-      contextService.getSmsAdapterKey.mockReturnValue('gc-notify');
+  it('getEmailAdapter returns ches adapter when key is ches', () => {
+    contextService.getEmailAdapterKey.mockReturnValue('ches');
 
-      expect(resolver.getSmsAdapter()).toBe(GC_NOTIFY_CLIENT);
-    });
+    expect(resolver.getEmailAdapter()).toBe(mockChes);
+  });
 
-    it('returns twilio adapter when key is twilio', () => {
-      contextService.getSmsAdapterKey.mockReturnValue('twilio');
+  it('getEmailAdapter returns nodemailer adapter when key is nodemailer', () => {
+    contextService.getEmailAdapterKey.mockReturnValue('nodemailer');
 
-      expect(resolver.getSmsAdapter()).toBe(mockTwilio);
-    });
+    expect(resolver.getEmailAdapter()).toBe(mockNodemailer);
+  });
 
-    it('falls back to twilio when key is unknown', () => {
-      contextService.getSmsAdapterKey.mockReturnValue('unknown');
+  it('getEmailAdapter falls back to nodemailer when key is unknown', () => {
+    contextService.getEmailAdapterKey.mockReturnValue('unknown');
 
-      expect(resolver.getSmsAdapter()).toBe(mockTwilio);
-    });
+    expect(resolver.getEmailAdapter()).toBe(mockNodemailer);
+  });
+
+  it('getSmsAdapter returns GC_NOTIFY_CLIENT when key is gc-notify', () => {
+    contextService.getSmsAdapterKey.mockReturnValue('gc-notify');
+
+    expect(resolver.getSmsAdapter()).toBe(GC_NOTIFY_CLIENT);
+  });
+
+  it('getSmsAdapter returns twilio adapter when key is twilio', () => {
+    contextService.getSmsAdapterKey.mockReturnValue('twilio');
+
+    expect(resolver.getSmsAdapter()).toBe(mockTwilio);
+  });
+
+  it('getSmsAdapter falls back to twilio when key is unknown', () => {
+    contextService.getSmsAdapterKey.mockReturnValue('unknown');
+
+    expect(resolver.getSmsAdapter()).toBe(mockTwilio);
   });
 });

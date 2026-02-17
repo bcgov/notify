@@ -9,6 +9,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BULK_MAX_ROWS } from '../constants';
 
 export class PostBulkRequest {
   @ApiProperty({
@@ -60,7 +61,7 @@ export class PostBulkRequest {
     message:
       'rows must have at least a header row and one data row (1-50,000 recipients)',
   })
-  @ArrayMaxSize(50001)
+  @ArrayMaxSize(BULK_MAX_ROWS)
   rows?: string[][];
 
   @ApiPropertyOptional({

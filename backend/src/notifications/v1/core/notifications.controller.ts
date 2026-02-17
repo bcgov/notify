@@ -13,6 +13,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiSecurity,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { NotificationsService } from '../../notifications.service';
 import {
@@ -32,6 +33,12 @@ export class NotificationsController {
   @Post('email')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Send an email notification' })
+  @ApiHeader({
+    name: 'X-Delivery-Email-Adapter',
+    required: false,
+    description:
+      'Email adapter for this request: nodemailer or ches. Defaults to config.',
+  })
   @ApiResponse({
     status: 201,
     description: 'Email notification created',
@@ -55,7 +62,9 @@ export class NotificationsController {
   })
   @ApiResponse({ status: 400, description: 'Invalid request body' })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid API key' })
-  async sendSms(@Body() body: SendSmsRequest): Promise<SendNotificationResponse> {
+  async sendSms(
+    @Body() body: SendSmsRequest,
+  ): Promise<SendNotificationResponse> {
     return this.notificationsService.sendSms(body);
   }
 

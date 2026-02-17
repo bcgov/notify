@@ -7,10 +7,6 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-/**
- * Request schema for creating a template.
- * Extension: Management schema - not part of the official GC Notify API.
- */
 export class CreateTemplateRequest {
   @ApiProperty({ description: 'Template name' })
   @IsString()

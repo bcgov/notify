@@ -32,11 +32,16 @@ async function bootstrap() {
       'api-key',
     )
     .addTag('Health', 'Health check endpoints')
-    .addTag('Notifications', 'Send and track notifications')
     .addTag(
       'GC Notify',
-      'GC Notify API replica - notifications, templates, bulk. Includes extension endpoints for sender and template management.',
+      'GC Notify API replica - notifications, templates, bulk.',
     )
+    .addTag('Notifications', 'Send and track notifications')
+    .addTag(
+      'Senders',
+      'Sender identity management (email reply-to, SMS sender)',
+    )
+    .addTag('Templates', 'Template management for notifications')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

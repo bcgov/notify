@@ -8,8 +8,11 @@ import {
   EMAIL_ADAPTER_MAP,
   SMS_ADAPTER,
   SMS_ADAPTER_MAP,
+  SENDER_STORE,
 } from './tokens';
 import type { IEmailTransport, ISmsTransport } from './interfaces';
+import { InMemoryTemplateStore } from './implementations/storage/in-memory/in-memory-template.store';
+import { InMemorySenderStore } from './implementations/storage/in-memory/in-memory-sender.store';
 
 export interface AdaptersModuleOptions {
   emailAdapter?: Type<IEmailTransport>;
@@ -81,8 +84,17 @@ export class AdaptersModule {
           },
           inject: [SMS_ADAPTER_MAP, ConfigService],
         },
+        InMemoryTemplateStore,
+        { provide: SENDER_STORE, useClass: InMemorySenderStore },
       ],
-      exports: [EMAIL_ADAPTER, SMS_ADAPTER, EMAIL_ADAPTER_MAP, SMS_ADAPTER_MAP],
+      exports: [
+        EMAIL_ADAPTER,
+        SMS_ADAPTER,
+        EMAIL_ADAPTER_MAP,
+        SMS_ADAPTER_MAP,
+        InMemoryTemplateStore,
+        SENDER_STORE,
+      ],
     };
   }
 }
