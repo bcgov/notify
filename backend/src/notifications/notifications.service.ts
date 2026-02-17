@@ -86,7 +86,12 @@ export class NotificationsService {
 
     const subject = rendered.subject ?? defaultSubject;
 
-    const sender = this.sendersService.getDefaultSender('email');
+    const sender = body.reply_to_id
+      ? await this.sendersService.findById(body.reply_to_id)
+      : this.sendersService.getDefaultSender('email');
+    if (body.reply_to_id && !sender) {
+      throw new NotFoundException(`Sender ${body.reply_to_id} not found`);
+    }
     const emailAdapterKey = this.deliveryContextService.getEmailAdapterKey();
     const fromEmail =
       sender?.email_address ??

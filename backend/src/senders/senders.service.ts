@@ -63,10 +63,6 @@ export class SendersService {
 
   createSender(body: CreateSenderRequest): Promise<Sender> {
     this.validateSenderFields(body);
-    const isDefault = body.is_default ?? false;
-    if (isDefault) {
-      this.clearDefaultForType(body.type);
-    }
     const id = uuidv4();
     const now = new Date().toISOString();
     const sender: StoredSender = {
@@ -74,7 +70,7 @@ export class SendersService {
       type: body.type,
       email_address: body.email_address,
       sms_sender: body.sms_sender,
-      is_default: isDefault,
+      is_default: body.is_default ?? false,
       created_at: now,
       updated_at: now,
     };
@@ -93,9 +89,6 @@ export class SendersService {
     }
     const merged = { ...existing, ...body };
     this.validateSenderFields(merged as CreateSenderRequest);
-    if (body.is_default === true) {
-      this.clearDefaultForType(existing.type, senderId);
-    }
     const updated: StoredSender = {
       ...existing,
       ...body,
@@ -104,29 +97,6 @@ export class SendersService {
     this.senderStore.set(senderId, updated);
     this.logger.log(`Updated sender: ${senderId}`);
     return updated;
-  }
-
-  /**
-   * Clear is_default on other senders of the same type so only one default exists per type.
-   * Excludes the given senderId when updating (used when setting a sender as default).
-   */
-  private clearDefaultForType(
-    type: 'email' | 'sms' | 'email+sms',
-    excludeId?: string,
-  ): void {
-    const senders = this.senderStore.getAll();
-    for (const s of senders) {
-      if (s.id === excludeId) continue;
-      const matchesType =
-        s.type === type || s.type === 'email+sms';
-      if (matchesType && s.is_default) {
-        this.senderStore.set(s.id, {
-          ...s,
-          is_default: false,
-          updated_at: new Date().toISOString(),
-        });
-      }
-    }
   }
 
   deleteSender(senderId: string): Promise<void> {

@@ -37,4 +37,13 @@ export class SendEmailRequest {
   @IsOptional()
   @IsString()
   reference?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Sender ID to use for from/reply-to address. When provided, this sender is used instead of the default.',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsOptional()
+  @IsUUID()
+  reply_to_id?: string;
 }

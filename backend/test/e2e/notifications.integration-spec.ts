@@ -245,6 +245,7 @@ describe('Notifications (integration)', () => {
         template_id: template.id,
         personalisation: { name: 'World', reference: e2eReference },
         reference: e2eReference,
+        reply_to_id: sender.id,
       }),
     });
 
