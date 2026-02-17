@@ -5,6 +5,7 @@ import {
   Param,
   Body,
   Query,
+  Req,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -15,8 +16,10 @@ import {
   ApiResponse,
   ApiSecurity,
   ApiQuery,
+  ApiHeader,
   ApiExtraModels,
 } from '@nestjs/swagger';
+import * as express from 'express';
 import { GcNotifyService } from '../../gc-notify.service';
 import { ApiKeyGuard } from '../../../common/guards';
 import {
@@ -96,6 +99,12 @@ export class GcNotifyController {
   @Post('notifications/email')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Send an email notification' })
+  @ApiHeader({
+    name: 'X-GC-Notify-Api-Key',
+    required: false,
+    description:
+      'Required when using GC Notify facade mode. Your GC Notify API key.',
+  })
   @ApiResponse({
     status: 201,
     description: 'Email notification created successfully',
@@ -104,13 +113,23 @@ export class GcNotifyController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
-  async sendEmail(@Body() body: CreateEmailNotificationRequest) {
-    return this.gcNotifyService.sendEmail(body);
+  async sendEmail(
+    @Body() body: CreateEmailNotificationRequest,
+    @Req() req: express.Request,
+  ) {
+    const gcNotifyAuthHeader = this.buildGcNotifyAuthHeader(req);
+    return this.gcNotifyService.sendEmail(body, gcNotifyAuthHeader);
   }
 
   @Post('notifications/sms')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Send an SMS notification' })
+  @ApiHeader({
+    name: 'X-GC-Notify-Api-Key',
+    required: false,
+    description:
+      'Required when using GC Notify facade mode. Your GC Notify API key.',
+  })
   @ApiResponse({
     status: 201,
     description: 'SMS notification created successfully',
@@ -119,8 +138,12 @@ export class GcNotifyController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
-  async sendSms(@Body() body: CreateSmsNotificationRequest) {
-    return this.gcNotifyService.sendSms(body);
+  async sendSms(
+    @Body() body: CreateSmsNotificationRequest,
+    @Req() req: express.Request,
+  ) {
+    const gcNotifyAuthHeader = this.buildGcNotifyAuthHeader(req);
+    return this.gcNotifyService.sendSms(body, gcNotifyAuthHeader);
   }
 
   @Post('notifications/bulk')
@@ -151,25 +174,55 @@ export class GcNotifyController {
   @Get('templates')
   @ApiOperation({ summary: 'Get list of templates' })
   @ApiQuery({ name: 'type', required: false, enum: ['sms', 'email'] })
+  @ApiHeader({
+    name: 'X-GC-Notify-Api-Key',
+    required: false,
+    description:
+      'Required when using GC Notify facade mode. Your GC Notify API key.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Successfully retrieved templates',
     type: TemplatesListResponse,
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getTemplates(@Query('type') type?: 'sms' | 'email') {
-    return this.gcNotifyService.getTemplates(type);
+  async getTemplates(
+    @Query('type') type?: 'sms' | 'email',
+    @Req() req?: express.Request,
+  ) {
+    const gcNotifyAuthHeader = req ? this.buildGcNotifyAuthHeader(req) : undefined;
+    return this.gcNotifyService.getTemplates(type, gcNotifyAuthHeader);
   }
 
   @Get('template/:templateId')
   @ApiOperation({ summary: 'Get template by ID' })
+  @ApiHeader({
+    name: 'X-GC-Notify-Api-Key',
+    required: false,
+    description:
+      'Required when using GC Notify facade mode. Your GC Notify API key.',
+  })
   @ApiResponse({
     status: 200,
     description: 'Template retrieved successfully',
     type: Template,
   })
   @ApiResponse({ status: 404, description: 'Template not found' })
-  async getTemplate(@Param('templateId') templateId: string) {
-    return this.gcNotifyService.getTemplate(templateId);
+  async getTemplate(
+    @Param('templateId') templateId: string,
+    @Req() req: express.Request,
+  ) {
+    const gcNotifyAuthHeader = this.buildGcNotifyAuthHeader(req);
+    return this.gcNotifyService.getTemplate(templateId, gcNotifyAuthHeader);
+  }
+
+  private buildGcNotifyAuthHeader(req: express.Request): string | undefined {
+    const key =
+      req.headers['x-gc-notify-api-key'] ??
+      req.headers['X-GC-Notify-Api-Key'];
+    if (typeof key === 'string' && key.trim()) {
+      return `ApiKey-v1 ${key.trim()}`;
+    }
+    return undefined;
   }
 }

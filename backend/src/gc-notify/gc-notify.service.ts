@@ -32,13 +32,18 @@ import type {
   ISenderStore,
   StoredSender,
 } from '../adapters/interfaces';
-import { EMAIL_ADAPTER, SMS_ADAPTER } from '../adapters/tokens';
 import {
   TEMPLATE_RESOLVER,
   TEMPLATE_RENDERER_REGISTRY,
   DEFAULT_TEMPLATE_ENGINE,
   SENDER_STORE,
 } from '../adapters/tokens';
+import {
+  DeliveryAdapterResolver,
+  GC_NOTIFY_CLIENT,
+} from '../common/delivery-context/delivery-adapter.resolver';
+import { DeliveryContextService } from '../common/delivery-context/delivery-context.service';
+import { GcNotifyApiClient } from './gc-notify-api.client';
 import { InMemoryTemplateStore } from '../adapters/implementations/storage/in-memory/in-memory-template.store';
 import type { StoredTemplate } from '../adapters/interfaces';
 import { FileAttachment } from './v2/core/schemas';
@@ -50,8 +55,9 @@ export class GcNotifyService {
   constructor(
     private readonly configService: ConfigService,
     private readonly templateStore: InMemoryTemplateStore,
-    @Inject(EMAIL_ADAPTER) private readonly emailTransport: IEmailTransport,
-    @Inject(SMS_ADAPTER) private readonly smsTransport: ISmsTransport,
+    private readonly deliveryAdapterResolver: DeliveryAdapterResolver,
+    private readonly deliveryContextService: DeliveryContextService,
+    private readonly gcNotifyApiClient: GcNotifyApiClient,
     @Inject(TEMPLATE_RESOLVER)
     private readonly templateResolver: ITemplateResolver,
     @Inject(TEMPLATE_RENDERER_REGISTRY)
@@ -83,7 +89,19 @@ export class GcNotifyService {
 
   async sendEmail(
     body: CreateEmailNotificationRequest,
+    authHeader?: string,
   ): Promise<NotificationResponse> {
+    const emailAdapter = this.deliveryAdapterResolver.getEmailAdapter();
+
+    if (emailAdapter === GC_NOTIFY_CLIENT) {
+      if (!authHeader) {
+        throw new BadRequestException(
+          'X-GC-Notify-Api-Key header is required when using GC Notify facade',
+        );
+      }
+      return this.gcNotifyApiClient.sendEmail(body, authHeader);
+    }
+
     const notificationId = uuidv4();
     this.logger.log(
       `Creating email notification: ${notificationId} to ${body.email_address}`,
@@ -118,19 +136,16 @@ export class GcNotifyService {
     const subject = body.subject ?? rendered.subject ?? defaultSubject;
 
     const sender = await this.resolveEmailSender(body.email_reply_to_id);
-    const emailAdapter = this.configService.get<string>(
-      'delivery.email',
-      'nodemailer',
-    );
+    const emailAdapterKey = this.deliveryContextService.getEmailAdapterKey();
     const fromEmail =
       sender?.email_address ??
-      this.configService.get<string>(`${emailAdapter}.from`) ??
+      this.configService.get<string>(`${emailAdapterKey}.from`) ??
       this.configService.get<string>(
         'defaults.email.from',
         'noreply@localhost',
       );
 
-    await this.emailTransport.send({
+    await (emailAdapter as IEmailTransport).send({
       to: body.email_address,
       subject,
       body: rendered.body,
@@ -159,7 +174,19 @@ export class GcNotifyService {
 
   async sendSms(
     body: CreateSmsNotificationRequest,
+    authHeader?: string,
   ): Promise<NotificationResponse> {
+    const smsAdapter = this.deliveryAdapterResolver.getSmsAdapter();
+
+    if (smsAdapter === GC_NOTIFY_CLIENT) {
+      if (!authHeader) {
+        throw new BadRequestException(
+          'X-GC-Notify-Api-Key header is required when using GC Notify facade',
+        );
+      }
+      return this.gcNotifyApiClient.sendSms(body, authHeader);
+    }
+
     const notificationId = uuidv4();
     this.logger.log(
       `Creating SMS notification: ${notificationId} to ${body.phone_number}`,
@@ -192,7 +219,7 @@ export class GcNotifyService {
       this.configService.get<string>('twilio.fromNumber') ??
       this.configService.get<string>('defaults.sms.fromNumber', '+15551234567');
 
-    await this.smsTransport.send({
+    await (smsAdapter as ISmsTransport).send({
       to: body.phone_number,
       body: rendered.body,
       from: fromNumber,
@@ -303,7 +330,15 @@ export class GcNotifyService {
 
   async getTemplates(
     type?: 'sms' | 'email',
+    authHeader?: string,
   ): Promise<{ templates: Template[] }> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+      return this.gcNotifyApiClient.getTemplates(type, authHeader);
+    }
+
     this.logger.log('Getting templates list');
     await Promise.resolve();
     let templates = this.templateStore.getAll();
@@ -313,7 +348,14 @@ export class GcNotifyService {
     return { templates };
   }
 
-  async getTemplate(templateId: string): Promise<Template> {
+  async getTemplate(templateId: string, authHeader?: string): Promise<Template> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+      return this.gcNotifyApiClient.getTemplate(templateId, authHeader);
+    }
+
     this.logger.log(`Getting template: ${templateId}`);
     const template = await this.templateStore.getById(templateId);
     if (!template) {

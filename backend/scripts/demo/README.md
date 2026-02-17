@@ -51,6 +51,50 @@ npm run start:dev   # in one terminal
 npm run demo        # in another
 ```
 
+## Dual Transport Demo (CHES + GC Notify)
+
+Sends the same personalised email via both CHES and GC Notify (passthrough facade):
+
+```bash
+npm run demo:dual-transport
+```
+
+Required env (or CLI args):
+
+| Variable               | CLI arg                 | Description                                      |
+| ---------------------- | ----------------------- | ------------------------------------------------ |
+| `GC_NOTIFY_API_KEY`    | `--gc-notify-api-key`   | Your GC Notify API key (for facade)              |
+| `GC_NOTIFY_TEMPLATE_ID`| `--template-id`         | UUID of template in GC Notify (must exist there) |
+| `DEMO_NAME`            | `--name`                | Value for `{{name}}` personalisation             |
+| `DEMO_EMAIL`           | `--email`               | Recipient email address                           |
+| `DEMO_SENDER_EMAIL`    | `--sender-email`        | Verified CHES sender address (for email_reply_to_id) |
+| `DEMO_SUBJECT`        | `--subject`             | Value for {{subject}} (default: "Hello", mirrors GC Notify) |
+
+For CHES: backend must have `CHES_CLIENT_ID`, `CHES_CLIENT_SECRET`, `CHES_BASE_URL`, `CHES_TOKEN_URL` in `backend/.env.local`. The script creates a sender via the API and uses `email_reply_to_id` instead of `CHES_FROM`.
+
+Example:
+
+```bash
+GC_NOTIFY_API_KEY=your-key \
+GC_NOTIFY_TEMPLATE_ID=uuid-of-your-template \
+DEMO_NAME="Jane" \
+DEMO_EMAIL=recipient@example.com \
+DEMO_SENDER_EMAIL=your-verified-ches-email@yourdomain.gov.bc.ca \
+npm run demo:dual-transport
+```
+
+Or with CLI args:
+
+```bash
+npm run demo:dual-transport -- --name "Jane" --email recipient@example.com --sender-email your-verified@domain.gov.bc.ca --template-id <uuid> --gc-notify-api-key <key>
+```
+
+The template content (Handlebars) used for CHES and equivalent for GC Notify:
+
+- **Heading 1**: This is a greeting
+- **Heading 2**: Personalised for you
+- **Paragraph**: Hello {{name}}
+
 ## Config
 
 Same variables as E2E tests. Base config from `test/e2e/env.local`; local overrides (credentials, adapter choice) from `backend/.env.local`.

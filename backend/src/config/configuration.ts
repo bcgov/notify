@@ -62,10 +62,16 @@ export default () => {
       sms: process.env.SMS_ADAPTER || process.env.SMS_TRANSPORT || 'twilio',
     },
 
-    // GC Notify template engine
+    // GC Notify template engine and external (facade mode)
     gcNotify: {
       defaultTemplateEngine:
         process.env.GC_NOTIFY_DEFAULT_TEMPLATE_ENGINE || 'jinja2',
+      external: {
+        baseUrl:
+          process.env.GC_NOTIFY_BASE_URL ||
+          'https://api.notification.canada.ca',
+        enabled: process.env.GC_NOTIFY_EXTERNAL_ENABLED === 'true',
+      },
     },
   };
 };

@@ -22,7 +22,8 @@
     "test:e2e:local": "E2E_ENV_FILE=test/e2e/env.local npm run test:e2e:integration",
     "test:e2e:staging": "E2E_ENV_FILE=test/e2e/env.staging npm run test:e2e:integration",
     "demo": "npx ts-node scripts/demo/business-scenario.ts",
-    "demo:staging": "DEMO_ENV_FILE=test/e2e/env.staging npx ts-node scripts/demo/business-scenario.ts"
+    "demo:staging": "DEMO_ENV_FILE=test/e2e/env.staging npx ts-node scripts/demo/business-scenario.ts",
+    "demo:dual-transport": "npx ts-node scripts/demo/dual-transport-demo.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { GcNotifyService } from '../../src/gc-notify/gc-notify.service';
+import { GcNotifyApiClient } from '../../src/gc-notify/gc-notify-api.client';
+import { DeliveryAdapterResolver } from '../../src/common/delivery-context/delivery-adapter.resolver';
+import { DeliveryContextService } from '../../src/common/delivery-context/delivery-context.service';
 import { InMemoryTemplateStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-template.store';
 import { InMemoryTemplateResolver } from '../../src/adapters/implementations/template/resolver/in-memory/in-memory-template.resolver';
 import { HandlebarsTemplateRenderer } from '../../src/adapters/implementations/template/renderer/handlebars/handlebars-template.renderer';
@@ -9,7 +12,6 @@ import { Jinja2TemplateRenderer } from '../../src/adapters/implementations/templ
 import { NunjucksTemplateRenderer } from '../../src/adapters/implementations/template/renderer/nunjucks/nunjucks-template.renderer';
 import { EjsTemplateRenderer } from '../../src/adapters/implementations/template/renderer/ejs/ejs-template.renderer';
 import { TemplateRendererRegistry } from '../../src/adapters/implementations/template/renderer-registry';
-import { EMAIL_ADAPTER, SMS_ADAPTER } from '../../src/adapters/tokens';
 import {
   TEMPLATE_RESOLVER,
   TEMPLATE_RENDERER_REGISTRY,
@@ -98,14 +100,32 @@ describe('GcNotifyService', () => {
       'jinja2',
     );
 
+    const deliveryAdapterResolver = {
+      getEmailAdapter: () => emailTransport,
+      getSmsAdapter: () => smsTransport,
+    };
+    const deliveryContextService = {
+      getEmailAdapterKey: () => 'nodemailer',
+      getSmsAdapterKey: () => 'twilio',
+      getTemplateSource: () => 'local',
+      getTemplateEngine: () => 'jinja2',
+    };
+    const gcNotifyApiClient = {
+      sendEmail: jest.fn(),
+      sendSms: jest.fn(),
+      getTemplates: jest.fn(),
+      getTemplate: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GcNotifyService,
         InMemoryTemplateStore,
         InMemoryTemplateResolver,
         { provide: ConfigService, useValue: { get: configGetMock } },
-        { provide: EMAIL_ADAPTER, useValue: emailTransport },
-        { provide: SMS_ADAPTER, useValue: smsTransport },
+        { provide: DeliveryAdapterResolver, useValue: deliveryAdapterResolver },
+        { provide: DeliveryContextService, useValue: deliveryContextService },
+        { provide: GcNotifyApiClient, useValue: gcNotifyApiClient },
         { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
         { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
         { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },

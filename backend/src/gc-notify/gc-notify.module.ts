@@ -1,4 +1,6 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
+import { DeliveryContextModule } from '../common/delivery-context/delivery-context.module';
+import { GcNotifyApiClient } from './gc-notify-api.client';
 import { GcNotifyService } from './gc-notify.service';
 import { InMemoryTemplateResolver } from '../adapters/implementations/template/resolver/in-memory/in-memory-template.resolver';
 import { InMemoryTemplateStore } from '../adapters/implementations/storage/in-memory/in-memory-template.store';
@@ -57,11 +59,13 @@ export class GcNotifyModule {
     return {
       module: GcNotifyModule,
       global: true,
+      imports: [DeliveryContextModule],
       providers: [
         InMemoryTemplateStore,
         ...rendererClasses,
         registryProvider,
         { provide: DEFAULT_TEMPLATE_ENGINE, useValue: defaultEngine },
+        GcNotifyApiClient,
         GcNotifyService,
         { provide: TEMPLATE_RESOLVER, useClass: templateResolver },
         { provide: SENDER_STORE, useClass: senderStore },

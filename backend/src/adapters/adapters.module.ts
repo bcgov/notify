@@ -1,7 +1,9 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { ChesEmailTransport } from './implementations/delivery/email/ches/ches-email.adapter';
 import { NodemailerEmailTransport } from './implementations/delivery/email/nodemailer/nodemailer-email.adapter';
 import { TwilioSmsTransport } from './implementations/delivery/sms/twilio/twilio-sms.adapter';
-import { EMAIL_ADAPTER, SMS_ADAPTER } from './tokens';
+import { EMAIL_ADAPTER, EMAIL_ADAPTER_MAP, SMS_ADAPTER, SMS_ADAPTER_MAP } from './tokens';
 import type { IEmailTransport, ISmsTransport } from './interfaces';
 
 export interface AdaptersModuleOptions {
@@ -15,18 +17,70 @@ export interface AdaptersModuleOptions {
  */
 @Module({})
 export class AdaptersModule {
-  static forRoot(options: AdaptersModuleOptions = {}): DynamicModule {
-    const emailAdapter = options.emailAdapter ?? NodemailerEmailTransport;
-    const smsAdapter = options.smsAdapter ?? TwilioSmsTransport;
-
+  static forRoot(_options: AdaptersModuleOptions = {}): DynamicModule {
     return {
       module: AdaptersModule,
       global: true,
       providers: [
-        { provide: EMAIL_ADAPTER, useClass: emailAdapter },
-        { provide: SMS_ADAPTER, useClass: smsAdapter },
+        ChesEmailTransport,
+        NodemailerEmailTransport,
+        TwilioSmsTransport,
+        {
+          provide: EMAIL_ADAPTER_MAP,
+          useFactory: (
+            ches: ChesEmailTransport,
+            nodemailer: NodemailerEmailTransport,
+          ): Record<string, IEmailTransport> => ({
+            ches,
+            nodemailer,
+          }),
+          inject: [ChesEmailTransport, NodemailerEmailTransport],
+        },
+        {
+          provide: SMS_ADAPTER_MAP,
+          useFactory: (twilio: TwilioSmsTransport): Record<string, ISmsTransport> => ({
+            twilio,
+          }),
+          inject: [TwilioSmsTransport],
+        },
+        {
+          provide: EMAIL_ADAPTER,
+          useFactory: (
+            map: Record<string, IEmailTransport>,
+            configService: ConfigService,
+          ): IEmailTransport => {
+            const key =
+              configService.get<string>('delivery.email') ?? 'nodemailer';
+            // gc-notify uses GcNotifyApiClient, not IEmailTransport; fallback for DI
+            if (key === 'gc-notify') {
+              return map['nodemailer'] ?? map['ches'];
+            }
+            return map[key] ?? map['nodemailer'] ?? map['ches'];
+          },
+          inject: [EMAIL_ADAPTER_MAP, ConfigService],
+        },
+        {
+          provide: SMS_ADAPTER,
+          useFactory: (
+            map: Record<string, ISmsTransport>,
+            configService: ConfigService,
+          ): ISmsTransport => {
+            const key = configService.get<string>('delivery.sms') ?? 'twilio';
+            // gc-notify uses GcNotifyApiClient, not ISmsTransport; fallback for DI
+            if (key === 'gc-notify') {
+              return map['twilio'];
+            }
+            return map[key] ?? map['twilio'];
+          },
+          inject: [SMS_ADAPTER_MAP, ConfigService],
+        },
       ],
-      exports: [EMAIL_ADAPTER, SMS_ADAPTER],
+      exports: [
+        EMAIL_ADAPTER,
+        SMS_ADAPTER,
+        EMAIL_ADAPTER_MAP,
+        SMS_ADAPTER_MAP,
+      ],
     };
   }
 }
