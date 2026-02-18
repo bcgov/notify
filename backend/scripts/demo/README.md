@@ -25,6 +25,45 @@ For staging (when configured):
 npm run demo:staging
 ```
 
+## Running against Docker image
+
+To run the demos against a containerised backend instead of `npm run start:dev`:
+
+**1. Build the image** (from repo root):
+
+```bash
+docker build -t notify-api ./backend
+```
+
+**2. Start the container** with env files and host access for Mailpit/Postgres:
+
+```bash
+docker run -d --name notify-api-backend -p 3000:3000 \
+  --add-host=host.docker.internal:host-gateway \
+  -e NODEMAILER_HOST=host.docker.internal \
+  -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/notify \
+  --env-file backend/.env \
+  --env-file backend/.env.local \
+  notify-api
+```
+
+`NODEMAILER_HOST` and `DATABASE_URL` must point to `host.docker.internal` so the container can reach Mailpit and Postgres on the host (e.g. devcontainer sidecars). Alternatively, add these overrides to `backend/.env.local` instead of using `-e`.
+
+**3. Run the demo** (from repo root, with backend container running):
+
+```bash
+npm run demo
+# or
+npm run demo:dual-transport
+npm run demo:dual-email-adapter
+```
+
+**4. Stop the container** when done:
+
+```bash
+docker stop notify-api-backend && docker rm notify-api-backend
+```
+
 ## What It Does
 
 1. **Create sender** — Registers an email identity for outbound notifications

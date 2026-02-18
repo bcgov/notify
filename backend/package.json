@@ -42,7 +42,8 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "twilio": "^5.3.4",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "dotenv": "^17.3.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -59,7 +60,6 @@
     "@types/nunjucks": "^3.2.6",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
-    "dotenv": "^17.3.1",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
