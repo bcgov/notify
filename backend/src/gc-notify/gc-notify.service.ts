@@ -4,6 +4,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  NotImplementedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
@@ -32,6 +33,7 @@ import {
 import {
   DeliveryAdapterResolver,
   GC_NOTIFY_CLIENT,
+  CHES_PASSTHROUGH_CLIENT,
 } from '../common/delivery-context/delivery-adapter.resolver';
 import { DeliveryContextService } from '../common/delivery-context/delivery-context.service';
 import { GcNotifyApiClient } from './gc-notify-api.client';
@@ -46,6 +48,10 @@ import type {
   CreateSenderRequest,
   UpdateSenderRequest,
 } from '../senders/v1/core/schemas';
+
+function isGcNotifyPassthrough(key: string): boolean {
+  return key === 'gc-notify:passthrough';
+}
 
 @Injectable()
 export class GcNotifyService {
@@ -78,7 +84,10 @@ export class GcNotifyService {
     const emailKey = this.deliveryContextService.getEmailAdapterKey();
     const smsKey = this.deliveryContextService.getSmsAdapterKey();
 
-    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
       return await this.gcNotifyApiClient.getNotifications(query, authHeader);
     }
 
@@ -96,7 +105,10 @@ export class GcNotifyService {
     const emailKey = this.deliveryContextService.getEmailAdapterKey();
     const smsKey = this.deliveryContextService.getSmsAdapterKey();
 
-    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
       return await this.gcNotifyApiClient.getNotificationById(
         notificationId,
         authHeader,
@@ -113,10 +125,15 @@ export class GcNotifyService {
   ): Promise<NotificationResponse> {
     const emailAdapter = this.deliveryAdapterResolver.getEmailAdapter();
 
+    if (emailAdapter === CHES_PASSTHROUGH_CLIENT) {
+      throw new NotImplementedException(
+        'CHES passthrough is not yet implemented. Use X-Delivery-Email-Adapter: ches for direct CHES.',
+      );
+    }
     if (emailAdapter === GC_NOTIFY_CLIENT) {
       if (!authHeader) {
         throw new BadRequestException(
-          'X-GC-Notify-Api-Key header is required when using GC Notify facade',
+          'X-GC-Notify-Api-Key header is required when using GC Notify passthrough',
         );
       }
       return this.gcNotifyApiClient.sendEmail(body, authHeader);
@@ -201,7 +218,7 @@ export class GcNotifyService {
     if (smsAdapter === GC_NOTIFY_CLIENT) {
       if (!authHeader) {
         throw new BadRequestException(
-          'X-GC-Notify-Api-Key header is required when using GC Notify facade',
+          'X-GC-Notify-Api-Key header is required when using GC Notify passthrough',
         );
       }
       return this.gcNotifyApiClient.sendSms(body, authHeader);
@@ -314,7 +331,10 @@ export class GcNotifyService {
     const emailKey = this.deliveryContextService.getEmailAdapterKey();
     const smsKey = this.deliveryContextService.getSmsAdapterKey();
 
-    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
       return await this.gcNotifyApiClient.sendBulk(body, authHeader);
     }
 
@@ -360,7 +380,10 @@ export class GcNotifyService {
     const emailKey = this.deliveryContextService.getEmailAdapterKey();
     const smsKey = this.deliveryContextService.getSmsAdapterKey();
 
-    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
       return this.gcNotifyApiClient.getTemplates(type, authHeader);
     }
 
@@ -374,7 +397,10 @@ export class GcNotifyService {
     const emailKey = this.deliveryContextService.getEmailAdapterKey();
     const smsKey = this.deliveryContextService.getSmsAdapterKey();
 
-    if ((emailKey === 'gc-notify' || smsKey === 'gc-notify') && authHeader) {
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
       return this.gcNotifyApiClient.getTemplate(templateId, authHeader);
     }
 

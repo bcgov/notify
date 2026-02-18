@@ -4,20 +4,20 @@
  *
  * Sends the same personalised email via two transports:
  * 1. CHES (Common Hosted Email Service) — via local backend template + CHES API
- * 2. GC Notify (passthrough facade) — forwards to real api.notification.canada.ca
+ * 2. GC Notify (passthrough) — forwards to real api.notification.canada.ca
  *
  * Template content (Handlebars):
  *   <h1>This is a greeting</h1>
  *   <h2>Personalised for you</h2>
  *   <p>Hello {{name}}</p>
  *   <p>Sent via {{channel}}</p>
- *   channel: gc-notify-ches | gc-notify-facade (per send)
+ *   channel: gc-notify-ches | gc-notify-passthrough (per send)
  *
  * Run in devcontainer against local services:
  *   npm run demo:dual-transport
  *
  * Required env (or CLI args):
- *   GC_NOTIFY_API_KEY     — Your GC Notify API key (for facade)
+ *   GC_NOTIFY_API_KEY     — Your GC Notify API key (for passthrough)
  *   GC_NOTIFY_TEMPLATE_ID — UUID of template in GC Notify (must exist there)
  *   DEMO_NAME             — Value for {{name}} personalisation
  *   DEMO_EMAIL            — Recipient email address
@@ -61,7 +61,7 @@ function authHeaders(): Record<string, string> {
 // heading 1 = This is a greeting
 // heading 2 = Personalised for you
 // paragraph = Hello {{name}}
-// channel = gc-notify-ches | gc-notify-facade (populated per send)
+// channel = gc-notify-ches | gc-notify-passthrough (populated per send)
 
 const HANDLEBARS_TEMPLATE_HTML = `
 <h1>This is a greeting</h1>
@@ -338,10 +338,10 @@ async function main(): Promise<void> {
     }
     divider();
 
-    // ─── Step 4: Send via GC Notify (facade) ──────────────────────────────────
-    step(4, 'Send email via GC Notify (passthrough facade)');
+    // ─── Step 4: Send via GC Notify (passthrough) ──────────────────────────────
+    step(4, 'Send email via GC Notify (passthrough)');
     sub('POST /gc-notify/v2/notifications/email');
-    sub('Headers: X-Delivery-Email-Adapter: gc-notify, X-GC-Notify-Api-Key');
+    sub('Headers: X-Delivery-Email-Adapter: gc-notify:passthrough, X-GC-Notify-Api-Key');
     sub(
       'Backend forwards to real api.notification.canada.ca. Template must exist there.',
     );
@@ -352,14 +352,14 @@ async function main(): Promise<void> {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Delivery-Email-Adapter': 'gc-notify',
+            'X-Delivery-Email-Adapter': 'gc-notify:passthrough',
             'X-GC-Notify-Api-Key': gcKey,
             ...authHeaders(),
           },
           body: JSON.stringify({
             email_address: email,
             template_id: templateId,
-            personalisation: { name, subject, channel: 'gc-notify-facade' },
+            personalisation: { name, subject, channel: 'gc-notify-passthrough' },
             reference: `${reference}-gc-notify`,
           }),
         });
@@ -377,7 +377,7 @@ async function main(): Promise<void> {
             content?: { from_email?: string; subject?: string; body?: string };
           };
           gcSucceeded = true;
-          ok('Email sent via GC Notify facade');
+          ok('Email sent via GC Notify passthrough');
           ok(`To: ${email}`);
           ok(`Subject: ${gcNotification.content?.subject}`);
           ok(`Reference: ${gcNotification.reference}`);
@@ -439,7 +439,7 @@ async function main(): Promise<void> {
     console.log(`  • Template: ${template ? 'created' : 'failed/skipped'}`);
     console.log(`  • CHES send: ${chesSucceeded ? 'ok' : 'failed/skipped'}`);
     console.log(
-      `  • GC Notify facade send: ${gcSucceeded ? 'ok' : 'failed/skipped'}`,
+      `  • GC Notify passthrough send: ${gcSucceeded ? 'ok' : 'failed/skipped'}`,
     );
     console.log('');
   } catch (err) {

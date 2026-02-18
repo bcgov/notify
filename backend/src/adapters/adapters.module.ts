@@ -61,11 +61,12 @@ export class AdaptersModule {
           ): IEmailTransport => {
             const key =
               configService.get<string>('delivery.email') ?? 'nodemailer';
-            // gc-notify uses GcNotifyApiClient, not IEmailTransport; fallback for DI
-            if (key === 'gc-notify') {
+            // Passthrough keys use GcNotifyApiClient/ChesPassthroughClient, not IEmailTransport; fallback for DI
+            if (key?.includes(':passthrough')) {
               return map['nodemailer'] ?? map['ches'];
             }
-            return map[key] ?? map['nodemailer'] ?? map['ches'];
+            const provider = key?.includes(':') ? key.split(':')[0] : key;
+            return map[provider] ?? map['nodemailer'] ?? map['ches'];
           },
           inject: [EMAIL_ADAPTER_MAP, ConfigService],
         },
@@ -76,11 +77,12 @@ export class AdaptersModule {
             configService: ConfigService,
           ): ISmsTransport => {
             const key = configService.get<string>('delivery.sms') ?? 'twilio';
-            // gc-notify uses GcNotifyApiClient, not ISmsTransport; fallback for DI
-            if (key === 'gc-notify') {
+            // Passthrough keys use GcNotifyApiClient, not ISmsTransport; fallback for DI
+            if (key?.includes(':passthrough')) {
               return map['twilio'];
             }
-            return map[key] ?? map['twilio'];
+            const provider = key?.includes(':') ? key.split(':')[0] : key;
+            return map[provider] ?? map['twilio'];
           },
           inject: [SMS_ADAPTER_MAP, ConfigService],
         },

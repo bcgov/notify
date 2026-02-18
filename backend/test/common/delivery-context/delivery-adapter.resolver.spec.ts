@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   DeliveryAdapterResolver,
   GC_NOTIFY_CLIENT,
+  CHES_PASSTHROUGH_CLIENT,
 } from '../../../src/common/delivery-context/delivery-adapter.resolver';
 import { DeliveryContextService } from '../../../src/common/delivery-context/delivery-context.service';
 import {
@@ -58,10 +59,22 @@ describe('DeliveryAdapterResolver', () => {
     resolver = module.get(DeliveryAdapterResolver);
   });
 
-  it('getEmailAdapter returns GC_NOTIFY_CLIENT when key is gc-notify', () => {
-    contextService.getEmailAdapterKey.mockReturnValue('gc-notify');
+  it('getEmailAdapter returns GC_NOTIFY_CLIENT when key is gc-notify:passthrough', () => {
+    contextService.getEmailAdapterKey.mockReturnValue('gc-notify:passthrough');
 
     expect(resolver.getEmailAdapter()).toBe(GC_NOTIFY_CLIENT);
+  });
+
+  it('getEmailAdapter returns CHES_PASSTHROUGH_CLIENT when key is ches:passthrough', () => {
+    contextService.getEmailAdapterKey.mockReturnValue('ches:passthrough');
+
+    expect(resolver.getEmailAdapter()).toBe(CHES_PASSTHROUGH_CLIENT);
+  });
+
+  it('getEmailAdapter returns adapter fallback when key is gc-notify without mode', () => {
+    contextService.getEmailAdapterKey.mockReturnValue('gc-notify');
+
+    expect(resolver.getEmailAdapter()).toBe(mockNodemailer);
   });
 
   it('getEmailAdapter returns ches adapter when key is ches', () => {
@@ -82,8 +95,8 @@ describe('DeliveryAdapterResolver', () => {
     expect(resolver.getEmailAdapter()).toBe(mockNodemailer);
   });
 
-  it('getSmsAdapter returns GC_NOTIFY_CLIENT when key is gc-notify', () => {
-    contextService.getSmsAdapterKey.mockReturnValue('gc-notify');
+  it('getSmsAdapter returns GC_NOTIFY_CLIENT when key is gc-notify:passthrough', () => {
+    contextService.getSmsAdapterKey.mockReturnValue('gc-notify:passthrough');
 
     expect(resolver.getSmsAdapter()).toBe(GC_NOTIFY_CLIENT);
   });

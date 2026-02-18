@@ -58,6 +58,8 @@ export class MyService {
 | `nodemailer` | Email | SMTP via Nodemailer (e.g. Mailpit for local dev) |
 | `twilio` | SMS | Twilio API (logs only when credentials are unset) |
 
+**Passthrough keys** (`provider:passthrough`): Use `gc-notify:passthrough` or `ches:passthrough` to forward requests to the external API instead of sending via a local adapter. See [DeliveryContext](../common/delivery-context/README.md).
+
 ## Available template engines
 
 | Engine | Syntax | Description |

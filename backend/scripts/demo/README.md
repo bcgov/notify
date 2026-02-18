@@ -53,7 +53,7 @@ npm run demo        # in another
 
 ## Dual Transport Demo (CHES + GC Notify)
 
-Sends the same personalised email via both CHES and GC Notify (passthrough facade):
+Sends the same personalised email via both CHES and GC Notify (passthrough):
 
 ```bash
 npm run demo:dual-transport
@@ -63,7 +63,7 @@ Required env (or CLI args):
 
 | Variable               | CLI arg                 | Description                                      |
 | ---------------------- | ----------------------- | ------------------------------------------------ |
-| `GC_NOTIFY_API_KEY`    | `--gc-notify-api-key`   | Your GC Notify API key (for facade)              |
+| `GC_NOTIFY_API_KEY`    | `--gc-notify-api-key`   | Your GC Notify API key (for passthrough)         |
 | `GC_NOTIFY_TEMPLATE_ID`| `--template-id`         | UUID of template in GC Notify (must exist there) |
 | `DEMO_NAME`            | `--name`                | Value for `{{name}}` personalisation             |
 | `DEMO_EMAIL`           | `--email`               | Recipient email address                           |

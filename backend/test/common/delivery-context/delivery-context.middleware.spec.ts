@@ -71,12 +71,12 @@ describe('DeliveryContextMiddleware', () => {
   it('uses X-Delivery-Sms-Adapter when present and valid', (done) => {
     const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
       expect(ctx.emailAdapter).toBe('nodemailer');
-      expect(ctx.smsAdapter).toBe('gc-notify');
+      expect(ctx.smsAdapter).toBe('gc-notify:passthrough');
       return fn();
     });
 
     middleware.use(
-      createReq({ 'x-delivery-sms-adapter': 'gc-notify' }),
+      createReq({ 'x-delivery-sms-adapter': 'gc-notify:passthrough' }),
       createRes(),
       createNext(),
     );
@@ -88,16 +88,59 @@ describe('DeliveryContextMiddleware', () => {
 
   it('uses both headers when present', (done) => {
     const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
-      expect(ctx.emailAdapter).toBe('gc-notify');
-      expect(ctx.smsAdapter).toBe('gc-notify');
+      expect(ctx.emailAdapter).toBe('gc-notify:passthrough');
+      expect(ctx.smsAdapter).toBe('gc-notify:passthrough');
       return fn();
     });
 
     middleware.use(
       createReq({
-        'x-delivery-email-adapter': 'gc-notify',
-        'x-delivery-sms-adapter': 'gc-notify',
+        'x-delivery-email-adapter': 'gc-notify:passthrough',
+        'x-delivery-sms-adapter': 'gc-notify:passthrough',
       }),
+      createRes(),
+      createNext(),
+    );
+
+    expect(runSpy).toHaveBeenCalled();
+    runSpy.mockRestore();
+    done();
+  });
+
+  it('ignores gc-notify without passthrough and falls back to config', (done) => {
+    configGetMock.mockImplementation((key: string) => {
+      if (key === 'delivery.email') return 'nodemailer';
+      if (key === 'delivery.sms') return 'twilio';
+      if (key === 'gcNotify.defaultTemplateEngine') return 'jinja2';
+      return undefined;
+    });
+
+    const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
+      expect(ctx.emailAdapter).toBe('nodemailer');
+      expect(ctx.smsAdapter).toBe('twilio');
+      return fn();
+    });
+
+    middleware.use(
+      createReq({ 'x-delivery-email-adapter': 'gc-notify' }),
+      createRes(),
+      createNext(),
+    );
+
+    expect(runSpy).toHaveBeenCalled();
+    runSpy.mockRestore();
+    done();
+  });
+
+  it('accepts ches:passthrough for email', (done) => {
+    const runSpy = jest.spyOn(storage, 'run').mockImplementation((ctx, fn) => {
+      expect(ctx.emailAdapter).toBe('ches:passthrough');
+      expect(ctx.smsAdapter).toBe('twilio');
+      return fn();
+    });
+
+    middleware.use(
+      createReq({ 'x-delivery-email-adapter': 'ches:passthrough' }),
       createRes(),
       createNext(),
     );

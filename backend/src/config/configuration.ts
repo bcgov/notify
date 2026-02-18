@@ -62,7 +62,7 @@ export default () => {
       sms: process.env.SMS_ADAPTER || process.env.SMS_TRANSPORT || 'twilio',
     },
 
-    // GC Notify template engine and external (facade mode)
+    // GC Notify template engine and external (passthrough mode)
     gcNotify: {
       defaultTemplateEngine:
         process.env.GC_NOTIFY_DEFAULT_TEMPLATE_ENGINE || 'jinja2',

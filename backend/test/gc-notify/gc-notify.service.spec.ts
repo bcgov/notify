@@ -1,9 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  NotImplementedException,
+} from '@nestjs/common';
 import { GcNotifyService } from '../../src/gc-notify/gc-notify.service';
 import { GcNotifyApiClient } from '../../src/gc-notify/gc-notify-api.client';
-import { DeliveryAdapterResolver } from '../../src/common/delivery-context/delivery-adapter.resolver';
+import {
+  DeliveryAdapterResolver,
+  CHES_PASSTHROUGH_CLIENT,
+} from '../../src/common/delivery-context/delivery-adapter.resolver';
 import { DeliveryContextService } from '../../src/common/delivery-context/delivery-context.service';
 import { InMemoryTemplateStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-template.store';
 import { InMemoryTemplateResolver } from '../../src/adapters/implementations/template/resolver/in-memory/in-memory-template.resolver';
@@ -374,13 +381,13 @@ describe('GcNotifyService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('getNotifications returns empty list when not in facade mode', async () => {
+  it('getNotifications returns empty list when not in passthrough mode', async () => {
     const result = await service.getNotifications({});
     expect(result.notifications).toEqual([]);
     expect(result.links.current).toBe('/gc-notify/v2/notifications');
   });
 
-  it('getNotificationById throws NotFoundException when not in facade mode', async () => {
+  it('getNotificationById throws NotFoundException when not in passthrough mode', async () => {
     await expect(service.getNotificationById('any-id')).rejects.toThrow(
       NotFoundException,
     );
@@ -533,7 +540,7 @@ describe('GcNotifyService', () => {
     );
   });
 
-  it('sendEmail throws BadRequestException when in facade mode without auth', async () => {
+  it('sendEmail throws BadRequestException when in passthrough mode without auth', async () => {
     const facadeService = await createFacadeGcNotifyService({});
 
     await expect(
@@ -544,7 +551,7 @@ describe('GcNotifyService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('sendSms throws BadRequestException when in facade mode without auth', async () => {
+  it('sendSms throws BadRequestException when in passthrough mode without auth', async () => {
     const facadeService = await createFacadeGcNotifyService({});
 
     await expect(
@@ -555,7 +562,18 @@ describe('GcNotifyService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('getNotifications returns client result when in facade mode with auth', async () => {
+  it('sendEmail throws NotImplementedException when using CHES passthrough', async () => {
+    const chesPassthroughService = await createChesPassthroughGcNotifyService();
+
+    await expect(
+      chesPassthroughService.sendEmail({
+        email_address: 'user@example.com',
+        template_id: 't-email',
+      }),
+    ).rejects.toThrow(NotImplementedException);
+  });
+
+  it('getNotifications returns client result when in passthrough mode with auth', async () => {
     const mockResult = {
       notifications: [
         {
@@ -586,7 +604,7 @@ describe('GcNotifyService', () => {
     expect(result).toEqual(mockResult);
   });
 
-  it('getNotificationById returns client result when in facade mode with auth', async () => {
+  it('getNotificationById returns client result when in passthrough mode with auth', async () => {
     const mockNotification = {
       id: 'n-1',
       type: 'email',
@@ -610,7 +628,7 @@ describe('GcNotifyService', () => {
     expect(result).toEqual(mockNotification);
   });
 
-  it('sendBulk returns client result when in facade mode with auth', async () => {
+  it('sendBulk returns client result when in passthrough mode with auth', async () => {
     const mockResponse = {
       data: {
         id: 'job-1',
@@ -697,8 +715,72 @@ async function createFacadeGcNotifyService(
       {
         provide: DeliveryContextService,
         useValue: {
-          getEmailAdapterKey: () => 'gc-notify',
-          getSmsAdapterKey: () => 'gc-notify',
+          getEmailAdapterKey: () => 'gc-notify:passthrough',
+          getSmsAdapterKey: () => 'gc-notify:passthrough',
+        },
+      },
+      { provide: GcNotifyApiClient, useValue: gcNotifyApiClient },
+      { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
+      { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
+      { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
+      { provide: SENDER_STORE, useClass: InMemorySenderStore },
+    ],
+  }).compile();
+  return module.get(GcNotifyService);
+}
+
+async function createChesPassthroughGcNotifyService(): Promise<GcNotifyService> {
+  const configGetMock = jest.fn((key: string, fallback?: string) => {
+    if (key === 'defaults.templates.defaultSubject')
+      return fallback ?? 'Notification';
+    if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
+    if (key === 'defaults.sms.fromNumber') return fallback ?? '+15551234567';
+    if (key === 'twilio.fromNumber') return fallback ?? '+15551234567';
+    return undefined;
+  });
+  const handlebarsRenderer = new HandlebarsTemplateRenderer();
+  const jinja2Renderer = new Jinja2TemplateRenderer(
+    new NunjucksTemplateRenderer(),
+  );
+  const ejsRenderer = new EjsTemplateRenderer();
+  const rendererRegistry = new TemplateRendererRegistry(
+    [
+      { engine: 'handlebars', instance: handlebarsRenderer },
+      { engine: 'jinja2', instance: jinja2Renderer },
+      { engine: 'ejs', instance: ejsRenderer },
+    ],
+    'jinja2',
+  );
+  const gcNotifyApiClient = {
+    sendEmail: jest.fn(),
+    sendSms: jest.fn(),
+    getTemplates: jest.fn(),
+    getTemplate: jest.fn(),
+    getNotifications: jest.fn(),
+    getNotificationById: jest.fn(),
+    sendBulk: jest.fn(),
+  };
+  const module: TestingModule = await Test.createTestingModule({
+    providers: [
+      GcNotifyService,
+      TemplatesService,
+      SendersService,
+      InMemoryTemplateStore,
+      InMemoryTemplateResolver,
+      { provide: ConfigService, useValue: { get: configGetMock } },
+      {
+        provide: DeliveryAdapterResolver,
+        useValue: {
+          getEmailAdapter: () => CHES_PASSTHROUGH_CLIENT,
+          getSmsAdapter: () =>
+            ({ name: 'twilio', send: jest.fn() } as unknown as ISmsTransport),
+        },
+      },
+      {
+        provide: DeliveryContextService,
+        useValue: {
+          getEmailAdapterKey: () => 'ches:passthrough',
+          getSmsAdapterKey: () => 'twilio',
         },
       },
       { provide: GcNotifyApiClient, useValue: gcNotifyApiClient },

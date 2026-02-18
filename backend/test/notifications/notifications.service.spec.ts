@@ -208,7 +208,7 @@ describe('NotificationsService', () => {
         { provide: DeliveryAdapterResolver, useValue: deliveryAdapterResolver },
         {
           provide: DeliveryContextService,
-          useValue: { getEmailAdapterKey: () => 'gc-notify' },
+          useValue: { getEmailAdapterKey: () => 'gc-notify:passthrough' },
         },
         { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
         { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },

@@ -24,6 +24,7 @@ import {
 import {
   DeliveryAdapterResolver,
   GC_NOTIFY_CLIENT,
+  CHES_PASSTHROUGH_CLIENT,
 } from '../common/delivery-context/delivery-adapter.resolver';
 import { DeliveryContextService } from '../common/delivery-context/delivery-context.service';
 import { SendersService } from '../senders/senders.service';
@@ -47,7 +48,10 @@ export class NotificationsService {
   async sendEmail(body: SendEmailRequest): Promise<SendNotificationResponse> {
     const emailAdapter = this.deliveryAdapterResolver.getEmailAdapter();
 
-    if (emailAdapter === GC_NOTIFY_CLIENT) {
+    if (
+      emailAdapter === GC_NOTIFY_CLIENT ||
+      emailAdapter === CHES_PASSTHROUGH_CLIENT
+    ) {
       throw new BadRequestException(
         'Universal API supports only nodemailer and ches adapters. Use X-Delivery-Email-Adapter: nodemailer or ches.',
       );

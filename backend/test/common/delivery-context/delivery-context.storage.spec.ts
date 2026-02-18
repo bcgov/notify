@@ -39,14 +39,14 @@ describe('DeliveryContextStorage', () => {
 
   it('nested run uses inner context', () => {
     const outer = { emailAdapter: 'nodemailer', smsAdapter: 'twilio' };
-    const inner = { emailAdapter: 'ches', smsAdapter: 'gc-notify' };
+    const inner = { emailAdapter: 'ches', smsAdapter: 'gc-notify:passthrough' };
 
     storage.run(outer, () => {
       expect(storage.get()?.emailAdapter).toBe('nodemailer');
 
       storage.run(inner, () => {
         expect(storage.get()?.emailAdapter).toBe('ches');
-        expect(storage.get()?.smsAdapter).toBe('gc-notify');
+        expect(storage.get()?.smsAdapter).toBe('gc-notify:passthrough');
       });
 
       expect(storage.get()?.emailAdapter).toBe('nodemailer');

@@ -1,6 +1,6 @@
 # DeliveryContext
 
-Global, request-scoped context for selecting email and SMS delivery adapters. Used by gc-notify, notifications, and other API modules to determine which transport (CHES, Nodemailer, Twilio, or GC Notify facade) handles each request.
+Global, request-scoped context for selecting email and SMS delivery adapters. Used by gc-notify, notifications, and other API modules to determine which transport (CHES, Nodemailer, Twilio, or GC Notify passthrough) handles each request.
 
 ## What It Does
 
@@ -26,7 +26,7 @@ Request → DeliveryContextMiddleware
 1. **Middleware** runs first. It calls `resolveContext(req)` to build a `DeliveryContext` from headers (if present and valid) or system config.
 2. **Storage** runs the rest of the request inside `storage.run(ctx, fn)`, so the context is available for the entire request.
 3. **DeliveryContextService** reads the context from storage. Services inject it and call `getEmailAdapterKey()`, `getSmsAdapterKey()`, etc.
-4. **DeliveryAdapterResolver** uses the context to return the correct adapter instance (or `'gc-notify-client'` when the key is `gc-notify`).
+4. **DeliveryAdapterResolver** uses the context to return the correct adapter instance (or `GC_NOTIFY_CLIENT` when the key is `gc-notify:passthrough`).
 
 ## Usage
 
@@ -43,11 +43,14 @@ async sendEmail(body: CreateEmailNotificationRequest) {
   const adapter = this.deliveryAdapterResolver.getEmailAdapter();
 
   if (adapter === GC_NOTIFY_CLIENT) {
-    // Forward to real GC Notify API
+    // Forward to real GC Notify API (passthrough)
     return this.gcNotifyApiClient.sendEmail(body, authHeader);
   }
+  if (adapter === CHES_PASSTHROUGH_CLIENT) {
+    throw new NotImplementedException('CHES passthrough not yet implemented');
+  }
 
-  // Use universal adapter (CHES, Nodemailer)
+  // Use adapter (CHES, Nodemailer)
   const rendered = await this.render(body);
   await (adapter as IEmailTransport).send(rendered);
 }
@@ -63,8 +66,8 @@ constructor(
 ) {}
 
 someMethod() {
-  const emailKey = this.deliveryContextService.getEmailAdapterKey(); // 'nodemailer' | 'ches' | 'gc-notify'
-  const smsKey = this.deliveryContextService.getSmsAdapterKey();     // 'twilio' | 'gc-notify'
+  const emailKey = this.deliveryContextService.getEmailAdapterKey(); // 'nodemailer' | 'ches' | 'gc-notify:passthrough' | 'ches:passthrough'
+  const smsKey = this.deliveryContextService.getSmsAdapterKey();     // 'twilio' | 'gc-notify:passthrough'
   const templateSource = this.deliveryContextService.getTemplateSource(); // 'local'
   const templateEngine = this.deliveryContextService.getTemplateEngine();  // 'jinja2'
 }
@@ -81,8 +84,8 @@ Per-request adapter selection via HTTP headers (useful for testing or explicit r
 
 | Header                      | Values                    | Description        |
 |-----------------------------|---------------------------|--------------------|
-| `X-Delivery-Email-Adapter`   | `nodemailer`, `ches`, `gc-notify` | Email adapter for this request |
-| `X-Delivery-Sms-Adapter`    | `twilio`, `gc-notify`     | SMS adapter for this request  |
+| `X-Delivery-Email-Adapter`   | `nodemailer`, `ches`, `gc-notify:passthrough`, `ches:passthrough` | Email adapter for this request |
+| `X-Delivery-Sms-Adapter`    | `twilio`, `gc-notify:passthrough`     | SMS adapter for this request  |
 
 Example:
 
@@ -102,20 +105,23 @@ System defaults (used when headers are absent or invalid):
 
 | Variable        | Default     | Description                    |
 |----------------|-------------|--------------------------------|
-| `EMAIL_ADAPTER`| `nodemailer`| Email adapter: `nodemailer`, `ches`, `gc-notify` |
-| `SMS_ADAPTER`  | `twilio`    | SMS adapter: `twilio`, `gc-notify` |
+| `EMAIL_ADAPTER`| `nodemailer`| Email: `nodemailer`, `ches`, `gc-notify:passthrough`, `ches:passthrough` |
+| `SMS_ADAPTER`  | `twilio`    | SMS: `twilio`, `gc-notify:passthrough` |
 | `GC_NOTIFY_DEFAULT_TEMPLATE_ENGINE` | `jinja2` | Template engine for local mode |
 
 ## Adapter Keys
 
-| Key         | Email | SMS  | Behavior                                      |
-|------------|-------|------|-----------------------------------------------|
-| `nodemailer` | ✓   | —    | Send via SMTP (e.g. Mailpit)                  |
-| `ches`     | ✓     | —    | Send via CHES API                             |
-| `twilio`   | —     | ✓    | Send via Twilio                               |
-| `gc-notify`| ✓     | ✓    | Forward to real GC Notify API (facade mode)   |
+Keys use the format `provider` (adapter) or `provider:passthrough` (forward to external API):
 
-When the key is `gc-notify`, `DeliveryAdapterResolver` returns `GC_NOTIFY_CLIENT` instead of an `IEmailTransport` / `ISmsTransport`. The caller must use `GcNotifyApiClient` instead.
+| Key                   | Email | SMS  | Behavior                                      |
+|-----------------------|-------|------|-----------------------------------------------|
+| `nodemailer`          | ✓     | —    | Send via SMTP (e.g. Mailpit)                  |
+| `ches`                | ✓     | —    | Send via CHES API                             |
+| `twilio`              | —     | ✓    | Send via Twilio                               |
+| `gc-notify:passthrough`| ✓     | ✓    | Forward to real GC Notify API (passthrough)   |
+| `ches:passthrough`    | ✓     | —    | Forward to CHES-based service (not yet implemented) |
+
+When the key is `gc-notify:passthrough`, `DeliveryAdapterResolver` returns `GC_NOTIFY_CLIENT` instead of an `IEmailTransport` / `ISmsTransport`. The caller must use `GcNotifyApiClient` instead. When the key is `ches:passthrough`, the resolver returns `CHES_PASSTHROUGH_CLIENT` (implementation pending).
 
 ## Module Setup
 

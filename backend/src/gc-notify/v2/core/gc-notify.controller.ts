@@ -51,7 +51,7 @@ export class GcNotifyController {
     name: 'X-GC-Notify-Api-Key',
     required: false,
     description:
-      'Required when using GC Notify facade mode. Your GC Notify API key.',
+      'Required when using GC Notify passthrough mode. Your GC Notify API key.',
   })
   @ApiQuery({ name: 'template_type', required: false, enum: ['sms', 'email'] })
   @ApiQuery({
@@ -114,7 +114,7 @@ export class GcNotifyController {
     name: 'X-GC-Notify-Api-Key',
     required: false,
     description:
-      'Required when using GC Notify facade mode. Your GC Notify API key.',
+      'Required when using GC Notify passthrough mode. Your GC Notify API key.',
   })
   @ApiResponse({
     status: 201,
@@ -139,7 +139,7 @@ export class GcNotifyController {
     name: 'X-GC-Notify-Api-Key',
     required: false,
     description:
-      'Required when using GC Notify facade mode. Your GC Notify API key.',
+      'Required when using GC Notify passthrough mode. Your GC Notify API key.',
   })
   @ApiResponse({
     status: 201,
@@ -164,7 +164,7 @@ export class GcNotifyController {
     name: 'X-GC-Notify-Api-Key',
     required: false,
     description:
-      'Required when using GC Notify facade mode. Your GC Notify API key.',
+      'Required when using GC Notify passthrough mode. Your GC Notify API key.',
   })
   @ApiResponse({
     status: 201,
@@ -185,7 +185,7 @@ export class GcNotifyController {
     name: 'X-GC-Notify-Api-Key',
     required: false,
     description:
-      'Required when using GC Notify facade mode. Your GC Notify API key.',
+      'Required when using GC Notify passthrough mode. Your GC Notify API key.',
   })
   @ApiResponse({
     status: 200,
@@ -211,7 +211,7 @@ export class GcNotifyController {
     name: 'X-GC-Notify-Api-Key',
     required: false,
     description:
-      'Required when using GC Notify facade mode. Your GC Notify API key.',
+      'Required when using GC Notify passthrough mode. Your GC Notify API key.',
   })
   @ApiResponse({
     status: 200,
@@ -235,7 +235,7 @@ export class GcNotifyController {
     name: 'X-GC-Notify-Api-Key',
     required: false,
     description:
-      'Required when using GC Notify facade mode. Your GC Notify API key.',
+      'Required when using GC Notify passthrough mode. Your GC Notify API key.',
   })
   @ApiResponse({
     status: 200,

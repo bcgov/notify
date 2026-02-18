@@ -33,7 +33,7 @@ export class GcNotifyApiClient {
     const url = this.configService.get<string>('gcNotify.external.baseUrl');
     if (!url) {
       throw new Error(
-        'GC_NOTIFY_BASE_URL is required when using GC Notify facade mode',
+        'GC_NOTIFY_BASE_URL is required when using GC Notify passthrough mode',
       );
     }
     return url.replace(/\/$/, '');

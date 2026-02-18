@@ -31,13 +31,13 @@ describe('DeliveryContextService', () => {
   it('getSmsAdapterKey returns context smsAdapter', () => {
     const ctx = {
       emailAdapter: 'nodemailer',
-      smsAdapter: 'gc-notify',
+      smsAdapter: 'gc-notify:passthrough',
       templateSource: 'local',
       templateEngine: 'handlebars',
     };
 
     storage.run(ctx, () => {
-      expect(service.getSmsAdapterKey()).toBe('gc-notify');
+      expect(service.getSmsAdapterKey()).toBe('gc-notify:passthrough');
     });
   });
 
