@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        package: [backend]  # Only backend for now (no frontend/migrations yet)
+        package: [backend]  # Only backend for now
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
