@@ -18,13 +18,10 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        package: [backend]  # Only backend for now
+        package: [backend]  # Only backend for now (no frontend/migrations yet)
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -33,24 +30,13 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare container metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          flavor: latest=true
-          tags: |
-            type=raw,value=pr-${{ github.event.number }}
-            type=raw,value=sha-${{ github.sha }}
-
       - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: ./${{ matrix.package }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: false
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}
+          docker build -t $IMAGE:${{ github.event.number }} \
+                       -t $IMAGE:latest \
+                       ./${{ matrix.package }}
+          docker push $IMAGE --all-tags
 
   # https://github.com/bcgov/quickstart-openshift-helpers
   deploys:
@@ -68,8 +54,7 @@ jobs:
         --set frontend.enabled=false
         --set crunchy.enabled=false
         --set backend.migrations.enabled=false
-        --set-string global.tag=pr-${{ github.event.number }}
-      triggers: ('backend/' 'charts/' '.github/workflows/.deployer.yml' '.github/workflows/pr-open.yml')
+      triggers: ('backend/' 'charts/' '.github/workflows/.deployer.yml')
       db_triggers: ('charts/crunchy/')
 
   tests:
