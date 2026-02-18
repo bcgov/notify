@@ -32,7 +32,7 @@ jobs:
       environment: dev
       db_user: appproxy
       tag: ${{ inputs.tag }}
-      params: --set frontend.enabled=false --set crunchy.enabled=false
+      params: --set frontend.enabled=false --set crunchy.enabled=false --set backend.migrations.enabled=false
 
   tests:
     name: Tests
@@ -50,7 +50,7 @@ jobs:
       environment: test
       db_user: appproxy
       tag: ${{ inputs.tag }}
-      params: --set frontend.enabled=false --set crunchy.enabled=false
+      params: --set frontend.enabled=false --set crunchy.enabled=false --set backend.migrations.enabled=false
 
   # deploy-prod:
   #   name: Deploy (PROD)
