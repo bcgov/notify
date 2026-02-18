@@ -16,7 +16,7 @@ backend:
     - name: backend
       registry: ghcr.io
       repository: bcgov/notify
-      image: backend
+      image: notify
       tag: latest
       resources:
         requests:
