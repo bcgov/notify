@@ -24,8 +24,26 @@ permissions: {}
 
 jobs:
   # https://github.com/bcgov/quickstart-openshift-helpers
+  deploy-dev:
+    name: Deploy (DEV)
+    uses: ./.github/workflows/.deployer.yml
+    secrets: inherit
+    with:
+      environment: dev
+      db_user: appproxy
+      tag: ${{ inputs.tag }}
+      params: --set frontend.enabled=false --set crunchy.enabled=false
+
+  tests:
+    name: Tests
+    needs: [deploy-dev]
+    uses: ./.github/workflows/.tests.yml
+    with:
+      target: dev
+
   deploy-test:
     name: Deploy (TEST)
+    needs: [tests]
     uses: ./.github/workflows/.deployer.yml
     secrets: inherit
     with:
@@ -34,43 +52,36 @@ jobs:
       tag: ${{ inputs.tag }}
       params: --set frontend.enabled=false --set crunchy.enabled=false
 
-  tests:
-    name: Tests
-    needs: [deploy-test]
-    uses: ./.github/workflows/.tests.yml
-    with:
-      target: test
+  # deploy-prod:
+  #   name: Deploy (PROD)
+  #   needs: [deploy-test]
+  #   uses: ./.github/workflows/.deployer.yml
+  #   secrets: inherit
+  #   with:
+  #     environment: prod
+  #     db_user: appproxy
+  #     params:
+  #       --set backend.deploymentStrategy=RollingUpdate
+  #       --set global.autoscaling=true
+  #       --set backend.pdb.enabled=true
+  #       --set frontend.enabled=false
+  #       --set crunchy.enabled=false
+  #     tag: ${{ inputs.tag }}
 
-  deploy-prod:
-    name: Deploy (PROD)
-    needs: [tests]
-    uses: ./.github/workflows/.deployer.yml
-    secrets: inherit
-    with:
-      environment: prod
-      db_user: appproxy
-      params:
-        --set backend.deploymentStrategy=RollingUpdate
-        --set global.autoscaling=true
-        --set backend.pdb.enabled=true
-        --set frontend.enabled=false
-        --set crunchy.enabled=false
-      tag: ${{ inputs.tag }}
-
-  promote:
-    name: Promote Images
-    needs: [deploy-prod]
-    runs-on: ubuntu-24.04
-    permissions:
-      packages: write
-    strategy:
-      matrix:
-        package: [backend]  # Only backend for now
-    timeout-minutes: 1
-    steps:
-      - uses: shrink/actions-docker-registry-tag@f04afd0559f66b288586792eb150f45136a927fa # v4
-        with:
-          registry: ghcr.io
-          repository: ${{ github.repository }}/${{ matrix.package }}
-          target: ${{ needs.deploy-prod.outputs.tag }}
-          tags: prod
+  # promote:
+  #   name: Promote Images
+  #   needs: [deploy-prod]
+  #   runs-on: ubuntu-24.04
+  #   permissions:
+  #     packages: write
+  #   strategy:
+  #     matrix:
+  #       package: [backend]  # Only backend for now
+  #   timeout-minutes: 1
+  #   steps:
+  #     - uses: shrink/actions-docker-registry-tag@f04afd0559f66b288586792eb150f45136a927fa # v4
+  #       with:
+  #         registry: ghcr.io
+  #         repository: ${{ github.repository }}-${{ matrix.package }}
+  #         target: ${{ needs.deploy-prod.outputs.tag }}
+  #         tags: prod

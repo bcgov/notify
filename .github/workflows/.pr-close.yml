@@ -1,0 +1,62 @@
+name: .PR Close
+
+on:
+  workflow_call:
+    inputs:
+      cleanup:
+        description: "Type of cleanup; e.g. helm"
+        required: false
+        type: string
+      environment:
+        description: Environment name; omit for PRs
+        required: false
+        type: string
+      cleanup_name:
+        description: "Use if template/cleanup name differs from repo"
+        type: string
+        default: ${{ github.event.repository.name }}
+      target:
+        description: "Target; e.g. PR number"
+        default: ${{ github.event.number }}
+        required: false
+        type: string
+
+    secrets:
+      oc_namespace:
+        description: "OpenShift namespace"
+        required: false
+      oc_token:
+        description: "OpenShift token"
+        required: false
+      oc_server:
+        description: "OpenShift server, defaults to https://api.silver.devops.gov.bc.ca:6443"
+        required: false
+
+permissions: {}
+
+env:
+  DEFAULT_OC_SERVER: https://api.silver.devops.gov.bc.ca:6443
+
+jobs:
+  # Clean up OpenShift when PR closed
+  cleanup:
+    name: OpenShift
+    if: inputs.cleanup == 'helm'
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Helm Cleanup
+        env:
+          release: ${{ inputs.cleanup_name }}-${{ inputs.target }}
+        uses: bcgov/action-oc-runner@f900830adadd4d9eef3ca6ff80103e839ba8b7c0 # v1.3.0
+        with:
+          oc_namespace: ${{ secrets.oc_namespace }}
+          oc_token: ${{ secrets.oc_token }}
+          oc_server: ${{ secrets.oc_server || env.DEFAULT_OC_SERVER }}
+          commands: |
+            # Cleanup for Helm deployments
+
+            # If found, then remove
+            helm status ${{ env.release }} && helm uninstall --no-hooks ${{ env.release }} || \
+              echo "Not found: ${{ env.release }}"
