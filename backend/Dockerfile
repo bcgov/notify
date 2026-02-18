@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --ignore-scripts --no-update-notifier
 COPY . ./
+RUN rm -rf scripts
 RUN npm run build
 
 # Production dependencies
