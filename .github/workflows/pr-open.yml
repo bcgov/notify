@@ -70,7 +70,7 @@ jobs:
         --set crunchy.enabled=false
         --set backend.migrations.enabled=false
         --set-string global.tag=pr-${{ github.event.number }}
-      triggers: ('backend/' 'charts/' '.github/workflows/.deployer.yml')
+      triggers: ('backend/' 'charts/' '.github/workflows/.deployer.yml' '.github/workflows/pr-open.yml')
       db_triggers: ('charts/crunchy/')
 
   tests:
