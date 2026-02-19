@@ -41,6 +41,7 @@ jobs:
     with:
       target: dev
 
+  ###Deactivated deploy to test###
   deploy-test:
     name: Deploy (TEST)
     needs: [tests]
