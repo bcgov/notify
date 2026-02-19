@@ -2,7 +2,7 @@ name: Merge
 
 on:
   push:
-    branches: [main]
+    branches: [main, testmergebranch]
     paths-ignore:
       - '*.md'
       - '.github/**'
