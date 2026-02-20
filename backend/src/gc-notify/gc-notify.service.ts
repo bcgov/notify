@@ -4,9 +4,11 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  NotImplementedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v4 as uuidv4 } from 'uuid';
+import { BULK_MAX_RECIPIENTS } from './v2/core/constants';
 import {
   CreateEmailNotificationRequest,
   CreateSmsNotificationRequest,
@@ -18,30 +20,38 @@ import {
   PostBulkResponse,
   PostBulkJobData,
 } from './v2/core/schemas';
-import {
-  Sender,
-  CreateSenderRequest,
-  UpdateSenderRequest,
-  CreateTemplateRequest,
-  UpdateTemplateRequest,
-} from './v2/contrib/schemas';
-import type { IEmailTransport, ISmsTransport } from '../adapters/interfaces';
 import type {
   ITemplateResolver,
   ITemplateRendererRegistry,
-  ISenderStore,
   StoredSender,
 } from '../adapters/interfaces';
-import { EMAIL_ADAPTER, SMS_ADAPTER } from '../adapters/tokens';
 import {
   TEMPLATE_RESOLVER,
   TEMPLATE_RENDERER_REGISTRY,
   DEFAULT_TEMPLATE_ENGINE,
-  SENDER_STORE,
 } from '../adapters/tokens';
-import { InMemoryTemplateStore } from '../adapters/implementations/storage/in-memory/in-memory-template.store';
-import type { StoredTemplate } from '../adapters/interfaces';
+import {
+  DeliveryAdapterResolver,
+  GC_NOTIFY_CLIENT,
+  CHES_PASSTHROUGH_CLIENT,
+} from '../common/delivery-context/delivery-adapter.resolver';
+import { DeliveryContextService } from '../common/delivery-context/delivery-context.service';
+import { GcNotifyApiClient } from './gc-notify-api.client';
 import { FileAttachment } from './v2/core/schemas';
+import { TemplatesService } from '../templates/templates.service';
+import { SendersService } from '../senders/senders.service';
+import type {
+  CreateTemplateRequest,
+  UpdateTemplateRequest,
+} from '../templates/v1/core/schemas';
+import type {
+  CreateSenderRequest,
+  UpdateSenderRequest,
+} from '../senders/v1/core/schemas';
+
+function isGcNotifyPassthrough(key: string): boolean {
+  return key === 'gc-notify:passthrough';
+}
 
 @Injectable()
 export class GcNotifyService {
@@ -49,41 +59,86 @@ export class GcNotifyService {
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly templateStore: InMemoryTemplateStore,
-    @Inject(EMAIL_ADAPTER) private readonly emailTransport: IEmailTransport,
-    @Inject(SMS_ADAPTER) private readonly smsTransport: ISmsTransport,
+    private readonly deliveryAdapterResolver: DeliveryAdapterResolver,
+    private readonly deliveryContextService: DeliveryContextService,
+    private readonly gcNotifyApiClient: GcNotifyApiClient,
+    private readonly templatesService: TemplatesService,
+    private readonly sendersService: SendersService,
     @Inject(TEMPLATE_RESOLVER)
     private readonly templateResolver: ITemplateResolver,
     @Inject(TEMPLATE_RENDERER_REGISTRY)
     private readonly rendererRegistry: ITemplateRendererRegistry,
     @Inject(DEFAULT_TEMPLATE_ENGINE) private readonly defaultEngine: string,
-    @Inject(SENDER_STORE) private readonly senderStore: ISenderStore,
   ) {}
 
-  async getNotifications(query: {
-    template_type?: 'sms' | 'email';
-    status?: string[];
-    reference?: string;
-    older_than?: string;
-    include_jobs?: boolean;
-  }): Promise<{ notifications: Notification[]; links: Links }> {
+  async getNotifications(
+    query: {
+      template_type?: 'sms' | 'email';
+      status?: string[];
+      reference?: string;
+      older_than?: string;
+      include_jobs?: boolean;
+    },
+    authHeader?: string,
+  ): Promise<{ notifications: Notification[]; links: Links }> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
+      return await this.gcNotifyApiClient.getNotifications(query, authHeader);
+    }
+
     this.logger.log('Getting notifications list', { query });
-    await Promise.resolve();
     return {
       notifications: [],
       links: { current: '/gc-notify/v2/notifications' },
     };
   }
 
-  async getNotificationById(notificationId: string): Promise<Notification> {
+  async getNotificationById(
+    notificationId: string,
+    authHeader?: string,
+  ): Promise<Notification> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
+      return await this.gcNotifyApiClient.getNotificationById(
+        notificationId,
+        authHeader,
+      );
+    }
+
     this.logger.log(`Getting notification: ${notificationId}`);
-    await Promise.resolve();
     throw new NotFoundException('Notification not found in database');
   }
 
   async sendEmail(
     body: CreateEmailNotificationRequest,
+    authHeader?: string,
   ): Promise<NotificationResponse> {
+    const emailAdapter = this.deliveryAdapterResolver.getEmailAdapter();
+
+    if (emailAdapter === CHES_PASSTHROUGH_CLIENT) {
+      throw new NotImplementedException(
+        'CHES passthrough is not yet implemented. Use X-Delivery-Email-Adapter: ches for direct CHES.',
+      );
+    }
+    if (emailAdapter === GC_NOTIFY_CLIENT) {
+      if (!authHeader) {
+        throw new BadRequestException(
+          'X-GC-Notify-Api-Key header is required when using GC Notify passthrough',
+        );
+      }
+      return this.gcNotifyApiClient.sendEmail(body, authHeader);
+    }
+
     const notificationId = uuidv4();
     this.logger.log(
       `Creating email notification: ${notificationId} to ${body.email_address}`,
@@ -103,21 +158,33 @@ export class GcNotifyService {
     }
 
     const personalisation = this.normalizePersonalisation(body.personalisation);
+    const defaultSubject = this.configService.get<string>(
+      'defaults.templates.defaultSubject',
+      'Notification',
+    );
     const engine = template.engine ?? this.defaultEngine;
     const renderer = this.rendererRegistry.getRenderer(engine);
-    const rendered = renderer.renderEmail({
+    const rendered = await renderer.renderEmail({
       template,
       personalisation,
+      defaultSubject,
     });
 
+    const subject = rendered.subject ?? defaultSubject;
+
     const sender = await this.resolveEmailSender(body.email_reply_to_id);
+    const emailAdapterKey = this.deliveryContextService.getEmailAdapterKey();
     const fromEmail =
       sender?.email_address ??
-      this.configService.get<string>('nodemailer.from', 'noreply@localhost');
+      this.configService.get<string>(`${emailAdapterKey}.from`) ??
+      this.configService.get<string>(
+        'defaults.email.from',
+        'noreply@localhost',
+      );
 
-    await this.emailTransport.send({
+    await emailAdapter.send({
       to: body.email_address,
-      subject: rendered.subject,
+      subject,
       body: rendered.body,
       from: fromEmail,
       replyTo: sender?.email_address,
@@ -130,7 +197,7 @@ export class GcNotifyService {
       content: {
         from_email: fromEmail,
         body: rendered.body,
-        subject: rendered.subject,
+        subject,
       },
       uri: `/gc-notify/v2/notifications/${notificationId}`,
       template: {
@@ -144,7 +211,19 @@ export class GcNotifyService {
 
   async sendSms(
     body: CreateSmsNotificationRequest,
+    authHeader?: string,
   ): Promise<NotificationResponse> {
+    const smsAdapter = this.deliveryAdapterResolver.getSmsAdapter();
+
+    if (smsAdapter === GC_NOTIFY_CLIENT) {
+      if (!authHeader) {
+        throw new BadRequestException(
+          'X-GC-Notify-Api-Key header is required when using GC Notify passthrough',
+        );
+      }
+      return this.gcNotifyApiClient.sendSms(body, authHeader);
+    }
+
     const notificationId = uuidv4();
     this.logger.log(
       `Creating SMS notification: ${notificationId} to ${body.phone_number}`,
@@ -166,7 +245,7 @@ export class GcNotifyService {
     const personalisation = body.personalisation ?? {};
     const engine = template.engine ?? this.defaultEngine;
     const renderer = this.rendererRegistry.getRenderer(engine);
-    const rendered = renderer.renderSms({
+    const rendered = await renderer.renderSms({
       template,
       personalisation,
     });
@@ -174,9 +253,10 @@ export class GcNotifyService {
     const sender = await this.resolveSmsSender(body.sms_sender_id);
     const fromNumber =
       sender?.sms_sender ??
-      this.configService.get<string>('twilio.fromNumber', '+15551234567');
+      this.configService.get<string>('twilio.fromNumber') ??
+      this.configService.get<string>('defaults.sms.fromNumber', '+15551234567');
 
-    await this.smsTransport.send({
+    await smsAdapter.send({
       to: body.phone_number,
       body: rendered.body,
       from: fromNumber,
@@ -230,32 +310,34 @@ export class GcNotifyService {
     senderId?: string,
   ): Promise<StoredSender | null> {
     if (senderId) {
-      return this.senderStore.getById(senderId);
+      return this.sendersService.findById(senderId);
     }
-    const defaultSender = this.senderStore
-      .getAll()
-      .find(
-        (s) => (s.type === 'email' || s.type === 'email+sms') && s.is_default,
-      );
-    return defaultSender ?? null;
+    return this.sendersService.getDefaultSender('email');
   }
 
   private async resolveSmsSender(
     senderId?: string,
   ): Promise<StoredSender | null> {
     if (senderId) {
-      return this.senderStore.getById(senderId);
+      return this.sendersService.findById(senderId);
     }
-    const defaultSender = this.senderStore
-      .getAll()
-      .find(
-        (s) => (s.type === 'sms' || s.type === 'email+sms') && s.is_default,
-      );
-    return defaultSender ?? null;
+    return this.sendersService.getDefaultSender('sms');
   }
 
-  async sendBulk(body: PostBulkRequest): Promise<PostBulkResponse> {
-    await Promise.resolve();
+  async sendBulk(
+    body: PostBulkRequest,
+    authHeader?: string,
+  ): Promise<PostBulkResponse> {
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
+      return await this.gcNotifyApiClient.sendBulk(body, authHeader);
+    }
+
     if (!body.rows && !body.csv) {
       throw new BadRequestException('You should specify either rows or csv');
     }
@@ -264,9 +346,15 @@ export class GcNotifyService {
       ? body.rows.length - 1
       : (body.csv?.split('\n').length ?? 1) - 1;
 
-    if (rowCount > 50000) {
+    if (rowCount < 1) {
       throw new BadRequestException(
-        'Too many rows. Maximum number of rows allowed is 50000',
+        'rows must have at least a header row and one data row (1-50,000 recipients)',
+      );
+    }
+
+    if (rowCount > BULK_MAX_RECIPIENTS) {
+      throw new BadRequestException(
+        `Too many rows. Maximum number of rows allowed is ${BULK_MAX_RECIPIENTS}`,
       );
     }
 
@@ -287,166 +375,71 @@ export class GcNotifyService {
 
   async getTemplates(
     type?: 'sms' | 'email',
+    authHeader?: string,
   ): Promise<{ templates: Template[] }> {
-    this.logger.log('Getting templates list');
-    await Promise.resolve();
-    let templates = this.templateStore.getAll();
-    if (type) {
-      templates = templates.filter((t) => t.type === type);
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
+      return this.gcNotifyApiClient.getTemplates(type, authHeader);
     }
-    return { templates };
+
+    return this.templatesService.getTemplates(type);
   }
 
-  async getTemplate(templateId: string): Promise<Template> {
-    this.logger.log(`Getting template: ${templateId}`);
-    const template = await this.templateStore.getById(templateId);
-    if (!template) {
-      throw new NotFoundException('Template not found in database');
-    }
-    return template;
-  }
-
-  // --- Senders CRUD (Extension: Management) ---
-
-  async getSenders(
-    type?: 'email' | 'sms' | 'email+sms',
-  ): Promise<{ senders: Sender[] }> {
-    this.logger.log('Getting senders list');
-    await Promise.resolve();
-    let senders = this.senderStore.getAll();
-    if (type) {
-      senders = senders.filter(
-        (s) => s.type === type || s.type === 'email+sms',
-      );
-    }
-    return { senders };
-  }
-
-  async getSender(senderId: string): Promise<Sender> {
-    this.logger.log(`Getting sender: ${senderId}`);
-    const sender = await this.senderStore.getById(senderId);
-    if (!sender) {
-      throw new NotFoundException('Sender not found');
-    }
-    return sender;
-  }
-
-  async createSender(body: CreateSenderRequest): Promise<Sender> {
-    await Promise.resolve();
-    this.validateSenderFields(body);
-    const id = uuidv4();
-    const now = new Date().toISOString();
-    const sender: StoredSender = {
-      id,
-      type: body.type,
-      email_address: body.email_address,
-      sms_sender: body.sms_sender,
-      is_default: body.is_default ?? false,
-      created_at: now,
-      updated_at: now,
-    };
-    this.senderStore.set(id, sender);
-    this.logger.log(`Created sender: ${id}`);
-    return sender;
-  }
-
-  async updateSender(
-    senderId: string,
-    body: UpdateSenderRequest,
-  ): Promise<Sender> {
-    const existing = await this.senderStore.getById(senderId);
-    if (!existing) {
-      throw new NotFoundException('Sender not found');
-    }
-    const merged = { ...existing, ...body };
-    this.validateSenderFields(merged as CreateSenderRequest);
-    const updated: StoredSender = {
-      ...existing,
-      ...body,
-      updated_at: new Date().toISOString(),
-    };
-    this.senderStore.set(senderId, updated);
-    this.logger.log(`Updated sender: ${senderId}`);
-    return updated;
-  }
-
-  async deleteSender(senderId: string): Promise<void> {
-    await Promise.resolve();
-    if (!this.senderStore.has(senderId)) {
-      throw new NotFoundException('Sender not found');
-    }
-    this.senderStore.delete(senderId);
-    this.logger.log(`Deleted sender: ${senderId}`);
-  }
-
-  private validateSenderFields(body: CreateSenderRequest): void {
-    if (body.type === 'email' || body.type === 'email+sms') {
-      if (!body.email_address) {
-        throw new BadRequestException(
-          'email_address is required when type is email or email+sms',
-        );
-      }
-    }
-    if (body.type === 'sms' || body.type === 'email+sms') {
-      if (!body.sms_sender) {
-        throw new BadRequestException(
-          'sms_sender is required when type is sms or email+sms',
-        );
-      }
-    }
-  }
-
-  // --- Templates CRUD (Extension: Management) ---
-
-  async createTemplate(body: CreateTemplateRequest): Promise<Template> {
-    await Promise.resolve();
-    const id = uuidv4();
-    const now = new Date().toISOString();
-    const template: StoredTemplate = {
-      id,
-      name: body.name,
-      description: body.description,
-      type: body.type,
-      subject: body.subject,
-      body: body.body,
-      personalisation: body.personalisation,
-      active: body.active ?? true,
-      engine: body.engine,
-      created_at: now,
-      updated_at: now,
-      version: 1,
-    };
-    this.templateStore.set(id, template);
-    this.logger.log(`Created template: ${id}`);
-    return template;
-  }
-
-  async updateTemplate(
+  async getTemplate(
     templateId: string,
-    body: UpdateTemplateRequest,
+    authHeader?: string,
   ): Promise<Template> {
-    const existing = await this.templateStore.getById(templateId);
-    if (!existing) {
-      throw new NotFoundException('Template not found in database');
+    const emailKey = this.deliveryContextService.getEmailAdapterKey();
+    const smsKey = this.deliveryContextService.getSmsAdapterKey();
+
+    if (
+      (isGcNotifyPassthrough(emailKey) || isGcNotifyPassthrough(smsKey)) &&
+      authHeader
+    ) {
+      return this.gcNotifyApiClient.getTemplate(templateId, authHeader);
     }
-    const stored = existing;
-    const updated: StoredTemplate = {
-      ...stored,
-      ...body,
-      updated_at: new Date().toISOString(),
-      version: stored.version + 1,
-    };
-    this.templateStore.set(templateId, updated);
-    this.logger.log(`Updated template: ${templateId}`);
-    return updated;
+
+    return this.templatesService.getTemplate(templateId);
   }
 
-  async deleteTemplate(templateId: string): Promise<void> {
-    await Promise.resolve();
-    if (!this.templateStore.has(templateId)) {
-      throw new NotFoundException('Template not found in database');
-    }
-    this.templateStore.delete(templateId);
-    this.logger.log(`Deleted template: ${templateId}`);
+  // --- Senders CRUD (delegates to SendersService) ---
+
+  getSenders(type?: 'email' | 'sms' | 'email+sms') {
+    return this.sendersService.getSenders(type);
+  }
+
+  getSender(senderId: string) {
+    return this.sendersService.getSender(senderId);
+  }
+
+  createSender(body: CreateSenderRequest) {
+    return this.sendersService.createSender(body);
+  }
+
+  updateSender(senderId: string, body: UpdateSenderRequest) {
+    return this.sendersService.updateSender(senderId, body);
+  }
+
+  deleteSender(senderId: string) {
+    return this.sendersService.deleteSender(senderId);
+  }
+
+  // --- Templates CRUD (delegates to TemplatesService) ---
+
+  createTemplate(body: CreateTemplateRequest) {
+    return this.templatesService.createTemplate(body);
+  }
+
+  updateTemplate(templateId: string, body: UpdateTemplateRequest) {
+    return this.templatesService.updateTemplate(templateId, body);
+  }
+
+  deleteTemplate(templateId: string) {
+    return this.templatesService.deleteTemplate(templateId);
   }
 }

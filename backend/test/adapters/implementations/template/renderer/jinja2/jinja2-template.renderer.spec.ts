@@ -17,7 +17,7 @@ describe('Jinja2TemplateRenderer', () => {
     expect(renderer.name).toBe('jinja2');
   });
 
-  it('renderEmail returns subject and body with Jinja2-style syntax', () => {
+  it('renderEmail returns subject and body with Jinja2-style syntax', async () => {
     const template: TemplateDefinition = {
       id: 't1',
       name: 'Welcome',
@@ -27,7 +27,7 @@ describe('Jinja2TemplateRenderer', () => {
       active: true,
     };
 
-    const result = renderer.renderEmail({
+    const result = await renderer.renderEmail({
       template,
       personalisation: { name: 'Alice', code: '123' },
     });

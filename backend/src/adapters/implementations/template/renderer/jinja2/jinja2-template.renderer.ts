@@ -5,6 +5,7 @@ import type {
   RenderContext,
   RenderedEmail,
   RenderedSms,
+  RenderOptions,
 } from '../../../../interfaces';
 
 /**
@@ -18,13 +19,17 @@ export class Jinja2TemplateRenderer implements ITemplateRenderer {
 
   constructor(private readonly nunjucks: NunjucksTemplateRenderer) {}
 
-  renderEmail(context: RenderContext): RenderedEmail {
-    return this.nunjucks.renderEmail(context);
+  async renderEmail(
+    context: RenderContext,
+    options?: RenderOptions,
+  ): Promise<RenderedEmail> {
+    return this.nunjucks.renderEmail(context, options);
   }
 
-  renderSms(
+  async renderSms(
     context: RenderContext & { personalisation: Record<string, string> },
-  ): RenderedSms {
-    return this.nunjucks.renderSms(context);
+    options?: RenderOptions,
+  ): Promise<RenderedSms> {
+    return this.nunjucks.renderSms(context, options);
   }
 }

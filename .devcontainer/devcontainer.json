@@ -7,8 +7,8 @@
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
 
-  // ── Container env (from sample.env.local) ───────────────────────────────────
-  "runArgs": ["--env-file", "${localWorkspaceFolder}/.devcontainer/sample.env.local"],
+  // ── Container env (from .env.example) ──────────────────────────────────────
+  "runArgs": ["--env-file", "${localWorkspaceFolder}/backend/.env.example"],
 
   // ── Dev container features (multi-arch aware) ────────────────────────────
   "features": {

@@ -4,8 +4,8 @@ import type { ITemplateRenderer } from '../../../../src/adapters/interfaces';
 describe('TemplateRendererRegistry', () => {
   const mockRenderer: ITemplateRenderer = {
     name: 'handlebars',
-    renderEmail: jest.fn().mockReturnValue({ subject: 's', body: 'b' }),
-    renderSms: jest.fn().mockReturnValue({ body: 'b' }),
+    renderEmail: jest.fn().mockResolvedValue({ subject: 's', body: 'b' }),
+    renderSms: jest.fn().mockResolvedValue({ body: 'b' }),
   };
 
   it('getRenderer returns renderer for registered engine', () => {

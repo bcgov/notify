@@ -1,7 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  NotImplementedException,
+} from '@nestjs/common';
 import { GcNotifyService } from '../../src/gc-notify/gc-notify.service';
+import { GcNotifyApiClient } from '../../src/gc-notify/gc-notify-api.client';
+import {
+  DeliveryAdapterResolver,
+  CHES_PASSTHROUGH_CLIENT,
+} from '../../src/common/delivery-context/delivery-adapter.resolver';
+import { DeliveryContextService } from '../../src/common/delivery-context/delivery-context.service';
 import { InMemoryTemplateStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-template.store';
 import { InMemoryTemplateResolver } from '../../src/adapters/implementations/template/resolver/in-memory/in-memory-template.resolver';
 import { HandlebarsTemplateRenderer } from '../../src/adapters/implementations/template/renderer/handlebars/handlebars-template.renderer';
@@ -9,7 +19,6 @@ import { Jinja2TemplateRenderer } from '../../src/adapters/implementations/templ
 import { NunjucksTemplateRenderer } from '../../src/adapters/implementations/template/renderer/nunjucks/nunjucks-template.renderer';
 import { EjsTemplateRenderer } from '../../src/adapters/implementations/template/renderer/ejs/ejs-template.renderer';
 import { TemplateRendererRegistry } from '../../src/adapters/implementations/template/renderer-registry';
-import { EMAIL_ADAPTER, SMS_ADAPTER } from '../../src/adapters/tokens';
 import {
   TEMPLATE_RESOLVER,
   TEMPLATE_RENDERER_REGISTRY,
@@ -17,6 +26,8 @@ import {
   SENDER_STORE,
 } from '../../src/adapters/tokens';
 import { InMemorySenderStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-sender.store';
+import { TemplatesService } from '../../src/templates/templates.service';
+import { SendersService } from '../../src/senders/senders.service';
 import type {
   IEmailTransport,
   ISmsTransport,
@@ -68,14 +79,21 @@ describe('GcNotifyService', () => {
 
   beforeEach(async () => {
     emailTransport = {
+      name: 'nodemailer',
       send: jest.fn().mockResolvedValue({ messageId: 'msg-1' }),
-    };
+    } as jest.Mocked<IEmailTransport>;
     smsTransport = {
+      name: 'twilio',
       send: jest.fn().mockResolvedValue({ messageId: 'sms-1' }),
-    };
+    } as jest.Mocked<ISmsTransport>;
     configGetMock = jest.fn((key: string, fallback?: string) => {
+      if (key === 'delivery.email') return fallback ?? 'nodemailer';
       if (key === 'nodemailer.from') return fallback ?? 'noreply@localhost';
       if (key === 'twilio.fromNumber') return fallback ?? '+15551234567';
+      if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
+      if (key === 'defaults.sms.fromNumber') return fallback ?? '+15551234567';
+      if (key === 'defaults.templates.defaultSubject')
+        return fallback ?? 'Notification';
       return undefined;
     });
 
@@ -93,14 +111,37 @@ describe('GcNotifyService', () => {
       'jinja2',
     );
 
+    const deliveryAdapterResolver = {
+      getEmailAdapter: () => emailTransport,
+      getSmsAdapter: () => smsTransport,
+    };
+    const deliveryContextService = {
+      getEmailAdapterKey: () => 'nodemailer',
+      getSmsAdapterKey: () => 'twilio',
+      getTemplateSource: () => 'local',
+      getTemplateEngine: () => 'jinja2',
+    };
+    const gcNotifyApiClient = {
+      sendEmail: jest.fn(),
+      sendSms: jest.fn(),
+      getTemplates: jest.fn(),
+      getTemplate: jest.fn(),
+      getNotifications: jest.fn(),
+      getNotificationById: jest.fn(),
+      sendBulk: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GcNotifyService,
+        TemplatesService,
+        SendersService,
         InMemoryTemplateStore,
         InMemoryTemplateResolver,
         { provide: ConfigService, useValue: { get: configGetMock } },
-        { provide: EMAIL_ADAPTER, useValue: emailTransport },
-        { provide: SMS_ADAPTER, useValue: smsTransport },
+        { provide: DeliveryAdapterResolver, useValue: deliveryAdapterResolver },
+        { provide: DeliveryContextService, useValue: deliveryContextService },
+        { provide: GcNotifyApiClient, useValue: gcNotifyApiClient },
         { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
         { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
         { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
@@ -172,8 +213,10 @@ describe('GcNotifyService', () => {
       personalisation: { name: 'Alice' },
     });
 
-    expect(result.content.subject).toBe('Hi Alice');
-    expect(result.content.body).toBe('Hello Alice');
+    expect(result.content).toMatchObject({
+      subject: 'Hi Alice',
+      body: 'Hello Alice',
+    });
   });
 
   it('sendEmail falls back to default engine when template has no engine', async () => {
@@ -185,8 +228,44 @@ describe('GcNotifyService', () => {
       personalisation: { name: 'Bob' },
     });
 
-    expect(result.content.subject).toBe('Hi Bob');
-    expect(result.content.body).toBe('Hello Bob');
+    expect(result.content).toMatchObject({
+      subject: 'Hi Bob',
+      body: 'Hello Bob',
+    });
+  });
+
+  it('sendEmail uses default sender when configured', async () => {
+    await service.createSender({
+      type: 'email',
+      email_address: 'custom@gov.bc.ca',
+      is_default: true,
+    });
+    templateStore.set('t-email', createEmailTemplate());
+
+    const result = await service.sendEmail({
+      email_address: 'user@example.com',
+      template_id: 't-email',
+      personalisation: { name: 'Alice' },
+    });
+
+    expect(result.content).toMatchObject({ from_email: 'custom@gov.bc.ca' });
+  });
+
+  it('sendEmail uses email_reply_to_id sender when provided', async () => {
+    const sender = await service.createSender({
+      type: 'email',
+      email_address: 'reply@gov.bc.ca',
+    });
+    templateStore.set('t-email', createEmailTemplate());
+
+    const result = await service.sendEmail({
+      email_address: 'user@example.com',
+      template_id: 't-email',
+      email_reply_to_id: sender.id,
+      personalisation: { name: 'Alice' },
+    });
+
+    expect(result.content).toMatchObject({ from_email: 'reply@gov.bc.ca' });
   });
 
   it('sendEmail uses EJS engine when template specifies engine: ejs', async () => {
@@ -205,8 +284,10 @@ describe('GcNotifyService', () => {
       personalisation: { name: 'Carol' },
     });
 
-    expect(result.content.subject).toBe('Hi Carol');
-    expect(result.content.body).toBe('Hello Carol');
+    expect(result.content).toMatchObject({
+      subject: 'Hi Carol',
+      body: 'Hello Carol',
+    });
   });
 
   it('sendSms returns NotificationResponse with id, content, uri, template', async () => {
@@ -262,6 +343,28 @@ describe('GcNotifyService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('sendBulk throws BadRequestException when rows has only header (no data rows)', async () => {
+    await expect(
+      service.sendBulk({
+        template_id: 't-email',
+        name: 'Job',
+        rows: [['email address', 'name']],
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('sendBulk returns job data when using csv instead of rows', async () => {
+    const result = await service.sendBulk({
+      template_id: 't-email',
+      name: 'Bulk Job',
+      csv: 'email address,name\na@b.com,Alice\nb@c.com,Bob',
+    });
+
+    expect(result.data.id).toBeDefined();
+    expect(result.data.notification_count).toBe(2);
+    expect(result.data.job_status).toBe('pending');
+  });
+
   it('sendBulk throws BadRequestException when row count exceeds 50000', async () => {
     const header = ['email', 'name'];
     const rows = Array.from({ length: 50001 }, (_, i) => [
@@ -276,6 +379,18 @@ describe('GcNotifyService', () => {
         rows: [header, ...rows],
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('getNotifications returns empty list when not in passthrough mode', async () => {
+    const result = await service.getNotifications({});
+    expect(result.notifications).toEqual([]);
+    expect(result.links.current).toBe('/gc-notify/v2/notifications');
+  });
+
+  it('getNotificationById throws NotFoundException when not in passthrough mode', async () => {
+    await expect(service.getNotificationById('any-id')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('getTemplates returns all templates when no type filter', async () => {
@@ -320,10 +435,12 @@ describe('GcNotifyService', () => {
     expect(result.email_address).toBe('noreply@gov.bc.ca');
   });
 
-  it('createSender throws when email type missing email_address', async () => {
-    await expect(service.createSender({ type: 'email' })).rejects.toThrow(
-      BadRequestException,
-    );
+  it('createSender throws when email type missing email_address', () => {
+    expect(() =>
+      service.createSender({ type: 'email' } as Parameters<
+        typeof service.createSender
+      >[0]),
+    ).toThrow(BadRequestException);
   });
 
   it('getSender returns sender when found', async () => {
@@ -390,7 +507,7 @@ describe('GcNotifyService', () => {
       engine: 'handlebars',
     });
 
-    expect(result.engine).toBe('handlebars');
+    expect(result).toHaveProperty('engine', 'handlebars');
   });
 
   it('updateTemplate returns updated template', async () => {
@@ -407,7 +524,7 @@ describe('GcNotifyService', () => {
 
     expect(result.name).toBe('New');
     expect(result.body).toBe('B2');
-    expect(result.version).toBe(2);
+    expect(result).toHaveProperty('version', 2);
   });
 
   it('deleteTemplate removes template', async () => {
@@ -422,4 +539,256 @@ describe('GcNotifyService', () => {
       NotFoundException,
     );
   });
+
+  it('sendEmail throws BadRequestException when in passthrough mode without auth', async () => {
+    const facadeService = await createFacadeGcNotifyService({});
+
+    await expect(
+      facadeService.sendEmail({
+        email_address: 'user@example.com',
+        template_id: 't-email',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('sendSms throws BadRequestException when in passthrough mode without auth', async () => {
+    const facadeService = await createFacadeGcNotifyService({});
+
+    await expect(
+      facadeService.sendSms({
+        phone_number: '+15551234567',
+        template_id: 't-sms',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('sendEmail throws NotImplementedException when using CHES passthrough', async () => {
+    const chesPassthroughService = await createChesPassthroughGcNotifyService();
+
+    await expect(
+      chesPassthroughService.sendEmail({
+        email_address: 'user@example.com',
+        template_id: 't-email',
+      }),
+    ).rejects.toThrow(NotImplementedException);
+  });
+
+  it('getNotifications returns client result when in passthrough mode with auth', async () => {
+    const mockResult = {
+      notifications: [
+        {
+          id: 'n-1',
+          type: 'email',
+          status: 'delivered',
+          body: 'Hi',
+          template: {
+            id: 't-1',
+            version: 1,
+            uri: '/gc-notify/v2/templates/t-1',
+          },
+          created_at: '2025-01-01',
+        },
+      ],
+      links: { current: '/gc-notify/v2/notifications', next: undefined },
+    };
+    const getNotificationsMock = jest.fn().mockResolvedValue(mockResult);
+    const facadeService = await createFacadeGcNotifyService({
+      getNotifications: getNotificationsMock,
+    });
+
+    const result = await facadeService.getNotifications(
+      { template_type: 'email' },
+      'ApiKey-v1 test-key',
+    );
+
+    expect(result).toEqual(mockResult);
+  });
+
+  it('getNotificationById returns client result when in passthrough mode with auth', async () => {
+    const mockNotification = {
+      id: 'n-1',
+      type: 'email',
+      status: 'delivered',
+      body: 'Hi',
+      template: { id: 't-1', version: 1, uri: '/gc-notify/v2/templates/t-1' },
+      created_at: '2025-01-01',
+    };
+    const getNotificationByIdMock = jest
+      .fn()
+      .mockResolvedValue(mockNotification);
+    const facadeService = await createFacadeGcNotifyService({
+      getNotificationById: getNotificationByIdMock,
+    });
+
+    const result = await facadeService.getNotificationById(
+      'n-1',
+      'ApiKey-v1 test-key',
+    );
+
+    expect(result).toEqual(mockNotification);
+  });
+
+  it('sendBulk returns client result when in passthrough mode with auth', async () => {
+    const mockResponse = {
+      data: {
+        id: 'job-1',
+        template: 't-1',
+        job_status: 'pending',
+        notification_count: 2,
+        created_at: '2025-01-01',
+      },
+    };
+    const sendBulkMock = jest.fn().mockResolvedValue(mockResponse);
+    const facadeService = await createFacadeGcNotifyService({
+      sendBulk: sendBulkMock,
+    });
+
+    const result = await facadeService.sendBulk(
+      {
+        template_id: 't-1',
+        name: 'Bulk Job',
+        rows: [
+          ['email address', 'name'],
+          ['a@b.com', 'Alice'],
+          ['b@c.com', 'Bob'],
+        ],
+      },
+      'ApiKey-v1 test-key',
+    );
+
+    expect(result).toEqual(mockResponse);
+  });
 });
+
+async function createFacadeGcNotifyService(
+  clientOverrides: {
+    getNotifications?: jest.Mock;
+    getNotificationById?: jest.Mock;
+    sendBulk?: jest.Mock;
+  } = {},
+): Promise<GcNotifyService> {
+  const configGetMock = jest.fn((key: string, fallback?: string) => {
+    if (key === 'defaults.templates.defaultSubject')
+      return fallback ?? 'Notification';
+    if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
+    if (key === 'defaults.sms.fromNumber') return fallback ?? '+15551234567';
+    if (key === 'twilio.fromNumber') return fallback ?? '+15551234567';
+    return undefined;
+  });
+  const handlebarsRenderer = new HandlebarsTemplateRenderer();
+  const jinja2Renderer = new Jinja2TemplateRenderer(
+    new NunjucksTemplateRenderer(),
+  );
+  const ejsRenderer = new EjsTemplateRenderer();
+  const rendererRegistry = new TemplateRendererRegistry(
+    [
+      { engine: 'handlebars', instance: handlebarsRenderer },
+      { engine: 'jinja2', instance: jinja2Renderer },
+      { engine: 'ejs', instance: ejsRenderer },
+    ],
+    'jinja2',
+  );
+  const gcNotifyApiClient = {
+    sendEmail: jest.fn(),
+    sendSms: jest.fn(),
+    getTemplates: jest.fn(),
+    getTemplate: jest.fn(),
+    getNotifications: clientOverrides.getNotifications ?? jest.fn(),
+    getNotificationById: clientOverrides.getNotificationById ?? jest.fn(),
+    sendBulk: clientOverrides.sendBulk ?? jest.fn(),
+  };
+  const module: TestingModule = await Test.createTestingModule({
+    providers: [
+      GcNotifyService,
+      TemplatesService,
+      SendersService,
+      InMemoryTemplateStore,
+      InMemoryTemplateResolver,
+      { provide: ConfigService, useValue: { get: configGetMock } },
+      {
+        provide: DeliveryAdapterResolver,
+        useValue: {
+          getEmailAdapter: () => 'gc-notify-client',
+          getSmsAdapter: () => 'gc-notify-client',
+        },
+      },
+      {
+        provide: DeliveryContextService,
+        useValue: {
+          getEmailAdapterKey: () => 'gc-notify:passthrough',
+          getSmsAdapterKey: () => 'gc-notify:passthrough',
+        },
+      },
+      { provide: GcNotifyApiClient, useValue: gcNotifyApiClient },
+      { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
+      { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
+      { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
+      { provide: SENDER_STORE, useClass: InMemorySenderStore },
+    ],
+  }).compile();
+  return module.get(GcNotifyService);
+}
+
+async function createChesPassthroughGcNotifyService(): Promise<GcNotifyService> {
+  const configGetMock = jest.fn((key: string, fallback?: string) => {
+    if (key === 'defaults.templates.defaultSubject')
+      return fallback ?? 'Notification';
+    if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
+    if (key === 'defaults.sms.fromNumber') return fallback ?? '+15551234567';
+    if (key === 'twilio.fromNumber') return fallback ?? '+15551234567';
+    return undefined;
+  });
+  const handlebarsRenderer = new HandlebarsTemplateRenderer();
+  const jinja2Renderer = new Jinja2TemplateRenderer(
+    new NunjucksTemplateRenderer(),
+  );
+  const ejsRenderer = new EjsTemplateRenderer();
+  const rendererRegistry = new TemplateRendererRegistry(
+    [
+      { engine: 'handlebars', instance: handlebarsRenderer },
+      { engine: 'jinja2', instance: jinja2Renderer },
+      { engine: 'ejs', instance: ejsRenderer },
+    ],
+    'jinja2',
+  );
+  const gcNotifyApiClient = {
+    sendEmail: jest.fn(),
+    sendSms: jest.fn(),
+    getTemplates: jest.fn(),
+    getTemplate: jest.fn(),
+    getNotifications: jest.fn(),
+    getNotificationById: jest.fn(),
+    sendBulk: jest.fn(),
+  };
+  const module: TestingModule = await Test.createTestingModule({
+    providers: [
+      GcNotifyService,
+      TemplatesService,
+      SendersService,
+      InMemoryTemplateStore,
+      InMemoryTemplateResolver,
+      { provide: ConfigService, useValue: { get: configGetMock } },
+      {
+        provide: DeliveryAdapterResolver,
+        useValue: {
+          getEmailAdapter: () => CHES_PASSTHROUGH_CLIENT,
+          getSmsAdapter: () =>
+            ({ name: 'twilio', send: jest.fn() } as unknown as ISmsTransport),
+        },
+      },
+      {
+        provide: DeliveryContextService,
+        useValue: {
+          getEmailAdapterKey: () => 'ches:passthrough',
+          getSmsAdapterKey: () => 'twilio',
+        },
+      },
+      { provide: GcNotifyApiClient, useValue: gcNotifyApiClient },
+      { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
+      { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
+      { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
+      { provide: SENDER_STORE, useClass: InMemorySenderStore },
+    ],
+  }).compile();
+  return module.get(GcNotifyService);
+}

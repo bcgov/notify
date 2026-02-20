@@ -3,10 +3,13 @@ import {
   IsOptional,
   IsArray,
   IsUUID,
+  IsDefined,
   ArrayMinSize,
   ArrayMaxSize,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BULK_MAX_ROWS } from '../constants';
 
 export class PostBulkRequest {
   @ApiProperty({
@@ -37,7 +40,8 @@ export class PostBulkRequest {
       'CSV content. Pass the full content of your CSV file. Do not include rows if using csv. One of rows or csv is required.',
     example: 'email address,name\nalice@example.com,Alice\nbob@example.com,Bob',
   })
-  @IsOptional()
+  @ValidateIf((o: PostBulkRequest) => !o.rows)
+  @IsDefined({ message: 'You should specify either rows or csv' })
   @IsString()
   csv?: string;
 
@@ -50,10 +54,14 @@ export class PostBulkRequest {
       ['bob@example.com', 'Bob'],
     ],
   })
-  @IsOptional()
+  @ValidateIf((o: PostBulkRequest) => !o.csv)
+  @IsDefined({ message: 'You should specify either rows or csv' })
   @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(50001)
+  @ArrayMinSize(2, {
+    message:
+      'rows must have at least a header row and one data row (1-50,000 recipients)',
+  })
+  @ArrayMaxSize(BULK_MAX_ROWS)
   rows?: string[][];
 
   @ApiPropertyOptional({

@@ -5,6 +5,7 @@ import {
   RenderContext,
   RenderedEmail,
   RenderedSms,
+  RenderOptions,
 } from '../../../../interfaces';
 import { splitPersonalisation } from '../utils/split-personalisation';
 
@@ -16,16 +17,19 @@ import { splitPersonalisation } from '../utils/split-personalisation';
 export class NunjucksTemplateRenderer implements ITemplateRenderer {
   readonly name = 'nunjucks';
 
-  renderEmail(context: RenderContext): RenderedEmail {
+  renderEmail(
+    context: RenderContext,
+    _options?: RenderOptions,
+  ): Promise<RenderedEmail> {
     const { strings, attachments } = splitPersonalisation(
       context.personalisation,
     );
     const subject = context.template.subject
       ? nunjucks.renderString(context.template.subject, strings)
-      : 'Notification';
+      : (context.defaultSubject ?? 'Notification');
     const body = nunjucks.renderString(context.template.body, strings);
 
-    return {
+    return Promise.resolve({
       subject,
       body,
       attachments:
@@ -36,16 +40,17 @@ export class NunjucksTemplateRenderer implements ITemplateRenderer {
               sendingMethod: a.sendingMethod,
             }))
           : undefined,
-    };
+    });
   }
 
   renderSms(
     context: RenderContext & { personalisation: Record<string, string> },
-  ): RenderedSms {
+    _options?: RenderOptions,
+  ): Promise<RenderedSms> {
     const body = nunjucks.renderString(
       context.template.body,
       context.personalisation,
     );
-    return { body };
+    return Promise.resolve({ body });
   }
 }

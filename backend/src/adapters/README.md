@@ -54,8 +54,11 @@ export class MyService {
 
 | Name | Type | Description |
 |------|------|-------------|
+| `ches` | Email | CHES (Common Hosted Email Service) REST API |
 | `nodemailer` | Email | SMTP via Nodemailer (e.g. Mailpit for local dev) |
 | `twilio` | SMS | Twilio API (logs only when credentials are unset) |
+
+**Passthrough keys** (`provider:passthrough`): Use `gc-notify:passthrough` or `ches:passthrough` to forward requests to the external API instead of sending via a local adapter. See [DeliveryContext](../common/delivery-context/README.md).
 
 ## Available template engines
 
@@ -67,6 +70,17 @@ export class MyService {
 | `ejs` | `<%= name %>` | EJS (Embedded JavaScript) |
 | `mustache` | `{{ name }}` | Mustache (logic-less) |
 
+## Storage (templates, senders)
+
+AdaptersModule provides in-memory storage for templates and senders, used by [TemplatesModule](../templates/templates.module.ts) and [SendersModule](../senders/senders.module.ts):
+
+| Provider | Implementation | Purpose |
+|----------|----------------|---------|
+| `InMemoryTemplateStore` | In-memory map | Template storage for v1/templates CRUD |
+| `SENDER_STORE` | `InMemorySenderStore` | Sender storage for v1/senders CRUD |
+
+Inject via `InMemoryTemplateStore` (class) or `SENDER_STORE` (token) from `../adapters/tokens`.
+
 ## Structure
 
 ```
@@ -77,7 +91,9 @@ adapters/
 │   └── storage/        # ITemplateStore, ISenderStore
 ├── implementations/
 │   ├── delivery/
-│   │   ├── email/nodemailer/
+│   │   ├── email/
+│   │   │   ├── ches/
+│   │   │   └── nodemailer/
 │   │   └── sms/twilio/
 │   ├── template/
 │   │   ├── renderer/

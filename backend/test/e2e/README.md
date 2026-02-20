@@ -19,9 +19,10 @@ End-to-end tests that hit a **running** API server over HTTP. Use these for smok
 
 ## Config
 
-Env files in this directory:
+Env files:
 
-- `env.local` — Local devcontainer (committed)
+- `env.local` — Base config for local devcontainer (committed)
+- `backend/.env.local` — Local overrides (credentials, adapter choice; gitignored, created from `.env.local.example`)
 - `env.staging.example` — Template; copy to `env.staging` and fill in
 - `env.staging` — Staging config (gitignored)
 
@@ -29,6 +30,7 @@ Override via env vars:
 
 ```bash
 E2E_BASE_URL=https://notify.example.com E2E_API_KEY=xxx npm run test:e2e:integration
+E2E_LOCAL_ENV_FILE=path/to/.env.local npm run test:e2e:integration
 ```
 
 ## Variables
@@ -38,6 +40,7 @@ E2E_BASE_URL=https://notify.example.com E2E_API_KEY=xxx npm run test:e2e:integra
 | `E2E_BASE_URL` | API base URL (default: `http://localhost:3000`) |
 | `E2E_API_KEY` | API key for protected endpoints |
 | `E2E_MAILPIT_URL` | Mailpit API URL (optional; enables Mailpit delivery validation when set) |
+| `E2E_LOCAL_ENV_FILE` | Override path to local overrides file (default: `backend/.env.local`) |
 | `E2E_SKIP_DELIVERY_VALIDATION` | Set to `true` to skip delivery validation (use for staging with real SMTP) |
 | `E2E_DELIVERY_VALIDATOR` | `mailpit` \| `none` — which validator to use (default: mailpit when `E2E_MAILPIT_URL` set) |
 
@@ -45,8 +48,8 @@ E2E_BASE_URL=https://notify.example.com E2E_API_KEY=xxx npm run test:e2e:integra
 
 The GC Notify full-flow test (`full flow: create sender → create template → send email → validate delivery`) exercises the complete business case:
 
-1. **Create sender** — POST `/gc-notify/v2/notifications/senders`, asserts response
-2. **Create template** — POST `/gc-notify/v2/templates`, asserts response
+1. **Create sender** — POST `/v1/senders`, asserts response
+2. **Create template** — POST `/v1/templates`, asserts response
 3. **Send email** — POST `/gc-notify/v2/notifications/email`, asserts response
 4. **Validate delivery** — Provider-specific; runs only when configured
 

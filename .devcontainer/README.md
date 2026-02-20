@@ -12,7 +12,7 @@ The dev container uses **Docker-in-Docker (DinD)**. After the container is up, `
 | `NODEMAILER_PORT` | `1025` | SMTP port |
 | `NODEMAILER_FROM` | `noreply@localhost` | Default sender address |
 
-Override in `.env` to test different adapters.
+Override in `backend/.env.local` to test different adapters (e.g. `EMAIL_ADAPTER=ches`) or add credentials. Created from `.env.local.example` on first run.
 
 **Forwarded ports**: 3000 (Backend API), 5432 (PostgreSQL), 1025 (Mailpit SMTP), 8025 (Mailpit UI). The host can reach these via localhost after forwarding.
 
@@ -32,6 +32,6 @@ The app is configured with `NODEMAILER_HOST=localhost` so emails sent via the GC
 Twilio is a cloud API — there is no local Docker simulator. For local development:
 
 - **Without credentials**: SMS is logged to the console (see `TwilioSmsTransport`)
-- **With credentials**: Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` in `.env` to send real SMS
+- **With credentials**: Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` in `backend/.env.local` to send real SMS
 
 For advanced mocking, Twilio offers [Prism-based OpenAPI mocking](https://www.twilio.com/docs/openapi/mock-api-generation-with-twilio-openapi-spec).

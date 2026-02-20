@@ -16,7 +16,7 @@ describe('NunjucksTemplateRenderer', () => {
     expect(renderer.name).toBe('nunjucks');
   });
 
-  it('renderEmail returns subject and body with personalisation interpolated', () => {
+  it('renderEmail returns subject and body with personalisation interpolated', async () => {
     const template: TemplateDefinition = {
       id: 't1',
       name: 'Welcome',
@@ -26,7 +26,7 @@ describe('NunjucksTemplateRenderer', () => {
       active: true,
     };
 
-    const result = renderer.renderEmail({
+    const result = await renderer.renderEmail({
       template,
       personalisation: { name: 'Alice', code: '123' },
     });
@@ -35,7 +35,7 @@ describe('NunjucksTemplateRenderer', () => {
     expect(result.body).toBe('Welcome, Alice. Your code is 123.');
   });
 
-  it('renderSms returns body with personalisation interpolated', () => {
+  it('renderSms returns body with personalisation interpolated', async () => {
     const template: TemplateDefinition = {
       id: 't1',
       name: 'SMS',
@@ -44,7 +44,7 @@ describe('NunjucksTemplateRenderer', () => {
       active: true,
     };
 
-    const result = renderer.renderSms({
+    const result = await renderer.renderSms({
       template,
       personalisation: { name: 'Bob', code: '456' },
     });

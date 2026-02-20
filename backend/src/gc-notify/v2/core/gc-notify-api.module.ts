@@ -3,8 +3,6 @@ import { GcNotifyController } from './gc-notify.controller';
 
 /**
  * GC Notify core API module - notifications, templates (read), bulk.
- * Registered after GcNotifyManagementModule to ensure route order
- * (notifications/senders before notifications/:notificationId).
  */
 @Module({
   controllers: [GcNotifyController],

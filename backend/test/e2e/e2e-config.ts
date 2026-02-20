@@ -1,6 +1,6 @@
 /**
  * E2E integration test configuration.
- * Loaded from env (E2E_ENV_FILE or env.local).
+ * Loaded from env (E2E_ENV_FILE or env.local, then E2E_LOCAL_ENV_FILE or backend/.env.local).
  */
 export const e2eConfig = {
   baseUrl: process.env.E2E_BASE_URL || 'http://localhost:3000',

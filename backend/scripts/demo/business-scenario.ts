@@ -11,7 +11,7 @@
  * Run in devcontainer against local services:
  *   npm run demo
  *
- * Config: DEMO_ENV_FILE or test/e2e/env.local
+ * Config: DEMO_ENV_FILE or test/e2e/env.local; DEMO_LOCAL_ENV_FILE or backend/.env.local for overrides.
  */
 
 import { config } from 'dotenv';
@@ -22,11 +22,16 @@ const envFile =
   process.env.DEMO_ENV_FILE || resolve(__dirname, '../../test/e2e/env.local');
 config({ path: envFile, quiet: true });
 
+const localFile =
+  process.env.DEMO_LOCAL_ENV_FILE || resolve(__dirname, '../../.env.local');
+config({ path: localFile, quiet: true });
+
 const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
 const apiKey = process.env.E2E_API_KEY || process.env.API_KEY || '';
 const mailpitUrl = process.env.E2E_MAILPIT_URL;
 
 const gcNotify = (path: string) => `${baseUrl}/gc-notify/v2${path}`;
+const v1 = (path: string) => `${baseUrl}/v1${path}`;
 
 function authHeaders(): Record<string, string> {
   if (!apiKey) return {};
@@ -131,7 +136,7 @@ async function main(): Promise<void> {
 
   if (!apiKey) {
     fail(
-      'E2E_API_KEY (or API_KEY) is required. Set it in env.local or DEMO_ENV_FILE.',
+      'E2E_API_KEY (or API_KEY) is required. Set it in test/e2e/env.local or backend/.env.local.',
     );
     process.exit(1);
   }
@@ -142,12 +147,12 @@ async function main(): Promise<void> {
   try {
     // ─── Step 1: Create sender ────────────────────────────────────────────
     step(1, 'Create a sender identity');
-    sub('POST /gc-notify/v2/notifications/senders');
+    sub('POST /v1/senders');
     sub(
       'We register an email address that will appear as the "From" for our notifications.',
     );
 
-    const createSenderRes = await fetch(gcNotify('/notifications/senders'), {
+    const createSenderRes = await fetch(v1('/senders'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -184,12 +189,12 @@ async function main(): Promise<void> {
 
     // ─── Step 2: Create template ────────────────────────────────────────────
     step(2, 'Create a reusable email template');
-    sub('POST /gc-notify/v2/templates');
+    sub('POST /v1/templates');
     sub(
       'Templates use placeholders (e.g. {{name}}) that are filled when sending.',
     );
 
-    const createTemplateRes = await fetch(gcNotify('/templates'), {
+    const createTemplateRes = await fetch(v1('/templates'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -339,4 +344,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+void main();
