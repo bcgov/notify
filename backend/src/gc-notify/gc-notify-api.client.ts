@@ -167,11 +167,11 @@ export class GcNotifyApiClient {
         body: raw.content.body,
         subject: raw.content.subject,
       },
-      uri: `/gc-notify/v2/notifications/${raw.id}`,
+      uri: `/api/v1/gcnotify/notifications/${raw.id}`,
       template: {
         id: raw.template.id,
         version: raw.template.version,
-        uri: `/gc-notify/v2/templates/${raw.template.id}`,
+        uri: `/api/v1/gcnotify/templates/${raw.template.id}`,
       },
       scheduled_for: raw.scheduled_for ?? body.scheduled_for,
     };
@@ -205,11 +205,11 @@ export class GcNotifyApiClient {
         body: raw.content.body,
         from_number: raw.content.from_number,
       },
-      uri: `/gc-notify/v2/notifications/${raw.id}`,
+      uri: `/api/v1/gcnotify/notifications/${raw.id}`,
       template: {
         id: raw.template.id,
         version: raw.template.version,
-        uri: `/gc-notify/v2/templates/${raw.template.id}`,
+        uri: `/api/v1/gcnotify/templates/${raw.template.id}`,
       },
       scheduled_for: raw.scheduled_for ?? body.scheduled_for,
     };
@@ -278,7 +278,7 @@ export class GcNotifyApiClient {
     const links: Links = {
       current:
         this.rewriteLinksPath(raw.links?.current) ??
-        '/gc-notify/v2/notifications',
+        '/api/v1/gcnotify/notifications',
       next: raw.links?.next ? this.rewriteLinksPath(raw.links.next) : undefined,
     };
 
@@ -336,7 +336,7 @@ export class GcNotifyApiClient {
     // Rewrite API links to proxy path /gc-notify/v2/notifications?...
     const idx = link.indexOf('?');
     const query = idx >= 0 ? link.slice(idx) : '';
-    return `/gc-notify/v2/notifications${query}`;
+    return `/api/v1/gcnotify/notifications${query}`;
   }
 
   private mapNotification(raw: Record<string, unknown>): Notification {
@@ -382,7 +382,7 @@ export class GcNotifyApiClient {
           template && typeof template.version === 'number'
             ? template.version
             : 1,
-        uri: `/gc-notify/v2/templates/${templateId}`,
+        uri: `/api/v1/gcnotify/templates/${templateId}`,
       },
       body: this.toSafeString(raw.body),
       subject: raw.subject != null ? this.toSafeString(raw.subject) : undefined,

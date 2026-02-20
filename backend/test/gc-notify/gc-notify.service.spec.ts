@@ -27,7 +27,7 @@ import {
 } from '../../src/adapters/tokens';
 import { InMemorySenderStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-sender.store';
 import { TemplatesService } from '../../src/templates/templates.service';
-import { SendersService } from '../../src/senders/senders.service';
+import { IdentitiesService } from '../../src/identities/identities.service';
 import type {
   IEmailTransport,
   ISmsTransport,
@@ -135,7 +135,7 @@ describe('GcNotifyService', () => {
       providers: [
         GcNotifyService,
         TemplatesService,
-        SendersService,
+        IdentitiesService,
         InMemoryTemplateStore,
         InMemoryTemplateResolver,
         { provide: ConfigService, useValue: { get: configGetMock } },
@@ -168,7 +168,7 @@ describe('GcNotifyService', () => {
       subject: 'Hi Alice',
       body: 'Hello Alice',
     });
-    expect(result.uri).toMatch(/^\/gc-notify\/v2\/notifications\/.+/);
+    expect(result.uri).toMatch(/^\/api\/v1\/gcnotify\/notifications\/.+/);
     expect(result.template.id).toBe('t-email');
     expect(result.template.version).toBe(1);
   });
@@ -234,11 +234,11 @@ describe('GcNotifyService', () => {
     });
   });
 
-  it('sendEmail uses default sender when configured', async () => {
-    await service.createSender({
+  it('sendEmail uses default identity when configured', async () => {
+    await service.createIdentity({
       type: 'email',
-      email_address: 'custom@gov.bc.ca',
-      is_default: true,
+      emailAddress: 'custom@gov.bc.ca',
+      isDefault: true,
     });
     templateStore.set('t-email', createEmailTemplate());
 
@@ -251,17 +251,17 @@ describe('GcNotifyService', () => {
     expect(result.content).toMatchObject({ from_email: 'custom@gov.bc.ca' });
   });
 
-  it('sendEmail uses email_reply_to_id sender when provided', async () => {
-    const sender = await service.createSender({
+  it('sendEmail uses email_reply_to_id identity when provided', async () => {
+    const identity = await service.createIdentity({
       type: 'email',
-      email_address: 'reply@gov.bc.ca',
+      emailAddress: 'reply@gov.bc.ca',
     });
     templateStore.set('t-email', createEmailTemplate());
 
     const result = await service.sendEmail({
       email_address: 'user@example.com',
       template_id: 't-email',
-      email_reply_to_id: sender.id,
+      email_reply_to_id: identity.id,
       personalisation: { name: 'Alice' },
     });
 
@@ -304,7 +304,7 @@ describe('GcNotifyService', () => {
       body: 'Hi Bob',
       from_number: '+15551234567',
     });
-    expect(result.uri).toMatch(/^\/gc-notify\/v2\/notifications\/.+/);
+    expect(result.uri).toMatch(/^\/api\/v1\/gcnotify\/notifications\/.+/);
     expect(result.template.id).toBe('t-sms');
   });
 
@@ -384,7 +384,7 @@ describe('GcNotifyService', () => {
   it('getNotifications returns empty list when not in passthrough mode', async () => {
     const result = await service.getNotifications({});
     expect(result.notifications).toEqual([]);
-    expect(result.links.current).toBe('/gc-notify/v2/notifications');
+    expect(result.links.current).toBe('/api/v1/gcnotify/notifications');
   });
 
   it('getNotificationById throws NotFoundException when not in passthrough mode', async () => {
@@ -424,63 +424,63 @@ describe('GcNotifyService', () => {
     );
   });
 
-  it('createSender returns sender with id', async () => {
-    const result = await service.createSender({
+  it('createIdentity returns identity with id', async () => {
+    const result = await service.createIdentity({
       type: 'email',
-      email_address: 'noreply@gov.bc.ca',
+      emailAddress: 'noreply@gov.bc.ca',
     });
 
     expect(result.id).toBeDefined();
     expect(result.type).toBe('email');
-    expect(result.email_address).toBe('noreply@gov.bc.ca');
+    expect(result.emailAddress).toBe('noreply@gov.bc.ca');
   });
 
-  it('createSender throws when email type missing email_address', () => {
+  it('createIdentity throws when email type missing emailAddress', () => {
     expect(() =>
-      service.createSender({ type: 'email' } as Parameters<
-        typeof service.createSender
+      service.createIdentity({ type: 'email' } as Parameters<
+        typeof service.createIdentity
       >[0]),
     ).toThrow(BadRequestException);
   });
 
-  it('getSender returns sender when found', async () => {
-    const created = await service.createSender({
+  it('getIdentity returns identity when found', async () => {
+    const created = await service.createIdentity({
       type: 'sms',
-      sms_sender: 'GOVBC',
+      smsSender: 'GOVBC',
     });
 
-    const result = await service.getSender(created.id);
+    const result = await service.getIdentity(created.id);
     expect(result.id).toBe(created.id);
-    expect(result.sms_sender).toBe('GOVBC');
+    expect(result.smsSender).toBe('GOVBC');
   });
 
-  it('getSender throws when not found', async () => {
-    await expect(service.getSender('missing')).rejects.toThrow(
+  it('getIdentity throws when not found', async () => {
+    await expect(service.getIdentity('missing')).rejects.toThrow(
       NotFoundException,
     );
   });
 
-  it('updateSender returns updated sender', async () => {
-    const created = await service.createSender({
+  it('updateIdentity returns updated identity', async () => {
+    const created = await service.createIdentity({
       type: 'email',
-      email_address: 'old@gov.bc.ca',
+      emailAddress: 'old@gov.bc.ca',
     });
 
-    const result = await service.updateSender(created.id, {
-      email_address: 'new@gov.bc.ca',
+    const result = await service.updateIdentity(created.id, {
+      emailAddress: 'new@gov.bc.ca',
     });
 
-    expect(result.email_address).toBe('new@gov.bc.ca');
+    expect(result.emailAddress).toBe('new@gov.bc.ca');
   });
 
-  it('deleteSender removes sender', async () => {
-    const created = await service.createSender({
+  it('deleteIdentity removes identity', async () => {
+    const created = await service.createIdentity({
       type: 'email',
-      email_address: 'x@gov.bc.ca',
+      emailAddress: 'x@gov.bc.ca',
     });
 
-    await service.deleteSender(created.id);
-    await expect(service.getSender(created.id)).rejects.toThrow(
+    await service.deleteIdentity(created.id);
+    await expect(service.getIdentity(created.id)).rejects.toThrow(
       NotFoundException,
     );
   });
@@ -701,7 +701,7 @@ async function createFacadeGcNotifyService(
     providers: [
       GcNotifyService,
       TemplatesService,
-      SendersService,
+      IdentitiesService,
       InMemoryTemplateStore,
       InMemoryTemplateResolver,
       { provide: ConfigService, useValue: { get: configGetMock } },
@@ -764,7 +764,7 @@ async function createChesPassthroughGcNotifyService(): Promise<GcNotifyService> 
     providers: [
       GcNotifyService,
       TemplatesService,
-      SendersService,
+      IdentitiesService,
       InMemoryTemplateStore,
       InMemoryTemplateResolver,
       { provide: ConfigService, useValue: { get: configGetMock } },
@@ -773,7 +773,7 @@ async function createChesPassthroughGcNotifyService(): Promise<GcNotifyService> 
         useValue: {
           getEmailAdapter: () => CHES_PASSTHROUGH_CLIENT,
           getSmsAdapter: () =>
-            ({ name: 'twilio', send: jest.fn() } as unknown as ISmsTransport),
+            ({ name: 'twilio', send: jest.fn() }) as unknown as ISmsTransport,
         },
       },
       {

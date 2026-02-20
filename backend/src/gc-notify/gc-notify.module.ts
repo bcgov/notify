@@ -4,7 +4,7 @@ import { TemplateResolutionModule } from '../common/template-resolution/template
 import { GcNotifyApiClient } from './gc-notify-api.client';
 import { GcNotifyService } from './gc-notify.service';
 import { TemplatesModule } from '../templates/templates.module';
-import { SendersModule } from '../senders/senders.module';
+import { IdentitiesModule } from '../identities/identities.module';
 
 /** Reserved for future options. Template resolution is provided by TemplateResolutionModule. */
 export type GcNotifyModuleOptions = Record<string, never>;
@@ -24,7 +24,7 @@ export class GcNotifyModule {
         DeliveryContextModule,
         TemplateResolutionModule,
         TemplatesModule,
-        SendersModule,
+        IdentitiesModule,
       ],
       providers: [GcNotifyApiClient, GcNotifyService],
       exports: [GcNotifyService],

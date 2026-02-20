@@ -6,8 +6,8 @@ import {
 
 const { baseUrl, apiKey, mailpitUrl } = e2eConfig;
 
-const gcNotify = (path: string) => `${baseUrl}/gc-notify/v2${path}`;
-const v1 = (path: string) => `${baseUrl}/v1${path}`;
+const gcNotify = (path: string) => `${baseUrl}/api/v1/gcnotify${path}`;
+const apiV1 = (path: string) => `${baseUrl}/api/v1${path}`;
 
 interface NotificationsListBody {
   notifications?: unknown[];
@@ -23,14 +23,13 @@ interface TemplateBody {
   type?: string;
 }
 
-interface SenderBody {
+interface IdentityBody {
   id?: string;
   type?: string;
-  email_address?: string;
-  sms_sender?: string;
-  is_default?: boolean;
-  created_at?: string;
-  updated_at?: string;
+  emailAddress?: string;
+  smsSender?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface CreateTemplateResponse {
@@ -148,10 +147,10 @@ describe('GC Notify (integration)', () => {
     expect(Array.isArray(body.templates)).toBe(true);
   });
 
-  it('POST /v1/templates creates template', async () => {
+  it('POST /api/v1/templates creates template', async () => {
     if (!apiKey) return;
 
-    const createRes = await fetch(v1('/templates'), {
+    const createRes = await fetch(apiV1('/templates'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -178,8 +177,8 @@ describe('GC Notify (integration)', () => {
     const e2eReference = `e2e-${Date.now()}`;
     const recipientEmail = `e2e-recipient-${Date.now()}@example.com`;
 
-    // --- 1. Create sender ---
-    const createSenderRes = await fetch(v1('/senders'), {
+    // --- 1. Create identity ---
+    const createIdentityRes = await fetch(apiV1('/identities'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -187,22 +186,21 @@ describe('GC Notify (integration)', () => {
       },
       body: JSON.stringify({
         type: 'email',
-        email_address: 'e2e-sender@example.com',
-        is_default: true,
+        emailAddress: 'e2e-sender@example.com',
+        isDefault: true,
       }),
     });
 
-    expect(createSenderRes.status).toBe(201);
-    const sender = (await createSenderRes.json()) as SenderBody;
-    expect(sender.id).toBeDefined();
-    expect(sender.type).toBe('email');
-    expect(sender.email_address).toBe('e2e-sender@example.com');
-    expect(sender.is_default).toBe(true);
-    expect(sender.created_at).toBeDefined();
-    expect(sender.updated_at).toBeDefined();
+    expect(createIdentityRes.status).toBe(201);
+    const identity = (await createIdentityRes.json()) as IdentityBody;
+    expect(identity.id).toBeDefined();
+    expect(identity.type).toBe('email');
+    expect(identity.emailAddress).toBe('e2e-sender@example.com');
+    expect(identity.createdAt).toBeDefined();
+    expect(identity.updatedAt).toBeDefined();
 
     // --- 2. Create template ---
-    const createTemplateRes = await fetch(v1('/templates'), {
+    const createTemplateRes = await fetch(apiV1('/templates'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -242,7 +240,7 @@ describe('GC Notify (integration)', () => {
         template_id: template.id,
         personalisation: { name: 'World', reference: e2eReference },
         reference: e2eReference,
-        email_reply_to_id: sender.id,
+        email_reply_to_id: identity.id,
       }),
     });
 
@@ -258,7 +256,7 @@ describe('GC Notify (integration)', () => {
     expect(notification.id).toBeDefined();
     expect(notification.reference).toBe(e2eReference);
     expect(notification.uri).toMatch(
-      new RegExp(`/gc-notify/v2/notifications/${notification.id}`),
+      new RegExp(`/api/v1/gcnotify/notifications/${notification.id}`),
     );
     expect(notification.content).toBeDefined();
     expect(notification.content?.from_email).toBe('e2e-sender@example.com');

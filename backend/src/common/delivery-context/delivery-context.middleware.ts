@@ -22,7 +22,10 @@ export class DeliveryContextMiddleware implements NestMiddleware {
     'gc-notify:passthrough',
     'ches:passthrough',
   ]);
-  private static readonly VALID_SMS_KEYS = new Set(['twilio', 'gc-notify:passthrough']);
+  private static readonly VALID_SMS_KEYS = new Set([
+    'twilio',
+    'gc-notify:passthrough',
+  ]);
 
   private resolveContext(req: Request): DeliveryContext {
     const headerEmail = this.getHeader(req, 'x-delivery-email-adapter');

@@ -39,15 +39,15 @@ import { DeliveryContextService } from '../common/delivery-context/delivery-cont
 import { GcNotifyApiClient } from './gc-notify-api.client';
 import { FileAttachment } from './v2/core/schemas';
 import { TemplatesService } from '../templates/templates.service';
-import { SendersService } from '../senders/senders.service';
+import { IdentitiesService } from '../identities/identities.service';
 import type {
   CreateTemplateRequest,
   UpdateTemplateRequest,
 } from '../templates/v1/core/schemas';
 import type {
-  CreateSenderRequest,
-  UpdateSenderRequest,
-} from '../senders/v1/core/schemas';
+  CreateIdentityRequest,
+  UpdateIdentityRequest,
+} from '../identities/v1/core/schemas';
 
 function isGcNotifyPassthrough(key: string): boolean {
   return key === 'gc-notify:passthrough';
@@ -63,7 +63,7 @@ export class GcNotifyService {
     private readonly deliveryContextService: DeliveryContextService,
     private readonly gcNotifyApiClient: GcNotifyApiClient,
     private readonly templatesService: TemplatesService,
-    private readonly sendersService: SendersService,
+    private readonly identitiesService: IdentitiesService,
     @Inject(TEMPLATE_RESOLVER)
     private readonly templateResolver: ITemplateResolver,
     @Inject(TEMPLATE_RENDERER_REGISTRY)
@@ -94,7 +94,7 @@ export class GcNotifyService {
     this.logger.log('Getting notifications list', { query });
     return {
       notifications: [],
-      links: { current: '/gc-notify/v2/notifications' },
+      links: { current: '/api/v1/gcnotify/notifications' },
     };
   }
 
@@ -199,11 +199,11 @@ export class GcNotifyService {
         body: rendered.body,
         subject,
       },
-      uri: `/gc-notify/v2/notifications/${notificationId}`,
+      uri: `/api/v1/gcnotify/notifications/${notificationId}`,
       template: {
         id: body.template_id,
         version: 1,
-        uri: `/gc-notify/v2/templates/${body.template_id}`,
+        uri: `/api/v1/gcnotify/templates/${body.template_id}`,
       },
       scheduled_for: body.scheduled_for,
     };
@@ -269,11 +269,11 @@ export class GcNotifyService {
         body: rendered.body,
         from_number: fromNumber,
       },
-      uri: `/gc-notify/v2/notifications/${notificationId}`,
+      uri: `/api/v1/gcnotify/notifications/${notificationId}`,
       template: {
         id: body.template_id,
         version: 1,
-        uri: `/gc-notify/v2/templates/${body.template_id}`,
+        uri: `/api/v1/gcnotify/templates/${body.template_id}`,
       },
       scheduled_for: body.scheduled_for,
     };
@@ -310,18 +310,18 @@ export class GcNotifyService {
     senderId?: string,
   ): Promise<StoredSender | null> {
     if (senderId) {
-      return this.sendersService.findById(senderId);
+      return this.identitiesService.findById(senderId);
     }
-    return this.sendersService.getDefaultSender('email');
+    return this.identitiesService.getDefaultIdentity('email');
   }
 
   private async resolveSmsSender(
     senderId?: string,
   ): Promise<StoredSender | null> {
     if (senderId) {
-      return this.sendersService.findById(senderId);
+      return this.identitiesService.findById(senderId);
     }
-    return this.sendersService.getDefaultSender('sms');
+    return this.identitiesService.getDefaultIdentity('sms');
   }
 
   async sendBulk(
@@ -407,26 +407,26 @@ export class GcNotifyService {
     return this.templatesService.getTemplate(templateId);
   }
 
-  // --- Senders CRUD (delegates to SendersService) ---
+  // --- Identities CRUD (delegates to IdentitiesService) ---
 
-  getSenders(type?: 'email' | 'sms' | 'email+sms') {
-    return this.sendersService.getSenders(type);
+  getIdentities(type?: 'email' | 'sms' | 'email+sms') {
+    return this.identitiesService.getIdentities(type);
   }
 
-  getSender(senderId: string) {
-    return this.sendersService.getSender(senderId);
+  getIdentity(identityId: string) {
+    return this.identitiesService.getIdentity(identityId);
   }
 
-  createSender(body: CreateSenderRequest) {
-    return this.sendersService.createSender(body);
+  createIdentity(body: CreateIdentityRequest) {
+    return this.identitiesService.createIdentity(body);
   }
 
-  updateSender(senderId: string, body: UpdateSenderRequest) {
-    return this.sendersService.updateSender(senderId, body);
+  updateIdentity(identityId: string, body: UpdateIdentityRequest) {
+    return this.identitiesService.updateIdentity(identityId, body);
   }
 
-  deleteSender(senderId: string) {
-    return this.sendersService.deleteSender(senderId);
+  deleteIdentity(identityId: string) {
+    return this.identitiesService.deleteIdentity(identityId);
   }
 
   // --- Templates CRUD (delegates to TemplatesService) ---

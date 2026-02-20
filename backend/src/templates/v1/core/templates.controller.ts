@@ -30,7 +30,7 @@ import {
 @ApiTags('Templates')
 @ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
-@Controller('v1/templates')
+@Controller('templates')
 export class TemplatesController {
   constructor(private readonly templatesService: TemplatesService) {}
 

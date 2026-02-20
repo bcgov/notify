@@ -41,7 +41,7 @@ import {
 @ApiExtraModels(EmailContent, SmsContent, FileAttachment)
 @ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
-@Controller('gc-notify/v2')
+@Controller('gcnotify')
 export class GcNotifyController {
   constructor(private readonly gcNotifyService: GcNotifyService) {}
 
