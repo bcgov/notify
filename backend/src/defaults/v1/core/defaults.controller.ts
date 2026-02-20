@@ -6,8 +6,8 @@ import {
   ApiResponse,
   ApiSecurity,
 } from '@nestjs/swagger';
-import { DefaultsService } from './defaults.service';
-import { ApiKeyGuard } from '../common/guards';
+import { DefaultsService } from '../../defaults.service';
+import { ApiKeyGuard } from '../../../common/guards';
 import { TenantDefaults } from './schemas/tenant-defaults';
 
 class UpdateTenantDefaultsDto extends PartialType(TenantDefaults) {}

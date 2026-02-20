@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { NotImplementedException } from '@nestjs/common';
-import { ChesController } from '../../src/ches/ches.controller';
+import { ChesController } from '../../../../src/ches/v1/core/ches.controller';
 
 describe('ChesController', () => {
   let controller: ChesController;

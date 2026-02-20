@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InMemoryDefaultsStore } from './stores/in-memory-defaults.store';
-import type { TenantDefaults } from './schemas/tenant-defaults';
+import type { TenantDefaults } from './v1/core/schemas/tenant-defaults';
 
 @Injectable()
 export class DefaultsService {

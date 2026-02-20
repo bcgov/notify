@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { TenantDefaults } from '../schemas/tenant-defaults';
+import type { TenantDefaults } from '../v1/core/schemas/tenant-defaults';
 
 const DEFAULT_TENANT = 'default';
 

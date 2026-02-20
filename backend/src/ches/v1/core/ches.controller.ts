@@ -8,7 +8,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { NotImplementedException } from '@nestjs/common';
-import { ApiKeyGuard } from '../common/guards';
+import { ApiKeyGuard } from '../../../common/guards';
 
 @ApiTags('CHES')
 @ApiSecurity('api-key')

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ChesController } from './ches.controller';
+import { ChesController } from './v1/core/ches.controller';
 
 @Module({
   controllers: [ChesController],
