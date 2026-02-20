@@ -12,7 +12,11 @@ describe('ChesController', () => {
       providers: [
         {
           provide: ConfigService,
-          useValue: { get: jest.fn((key: string) => (key === 'api.apiKey' ? 'test-key' : undefined)) },
+          useValue: {
+            get: jest.fn((key: string) =>
+              key === 'api.apiKey' ? 'test-key' : undefined,
+            ),
+          },
         },
       ],
     }).compile();

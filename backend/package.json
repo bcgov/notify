@@ -100,5 +100,8 @@
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node"
+  },
+  "overrides": {
+    "minimatch": ">=10.2.1"
   }
 }
