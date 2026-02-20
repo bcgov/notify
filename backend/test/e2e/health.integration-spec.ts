@@ -9,8 +9,8 @@ interface HealthBody {
 }
 
 describe('Health (integration)', () => {
-  it('GET /health returns ok', async () => {
-    const res = await fetch(`${baseUrl}/health`);
+  it('GET /api/v1/health returns ok', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/health`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as HealthBody;
     expect(body.status).toBe('ok');
@@ -18,16 +18,16 @@ describe('Health (integration)', () => {
     expect(body.timestamp).toBeDefined();
   });
 
-  it('GET /health/ready returns ready', async () => {
-    const res = await fetch(`${baseUrl}/health/ready`);
+  it('GET /api/v1/health/ready returns ready', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/health/ready`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as HealthBody;
     expect(body.status).toBe('ready');
     expect(body.timestamp).toBeDefined();
   });
 
-  it('GET /health/live returns alive', async () => {
-    const res = await fetch(`${baseUrl}/health/live`);
+  it('GET /api/v1/health/live returns alive', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/health/live`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as HealthBody;
     expect(body.status).toBe('alive');

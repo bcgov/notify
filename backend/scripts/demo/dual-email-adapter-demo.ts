@@ -46,7 +46,7 @@ const demoEmail = process.env.DEMO_EMAIL || '';
 const demoSenderEmail = process.env.DEMO_SENDER_EMAIL || '';
 const demoSubject = process.env.DEMO_SUBJECT || 'Hello';
 
-const v1 = (path: string) => `${baseUrl}/v1${path}`;
+const apiV1 = (path: string) => `${baseUrl}/api/v1${path}`;
 
 function authHeaders(): Record<string, string> {
   if (!apiKey) return {};
@@ -160,19 +160,20 @@ async function main(): Promise<void> {
   }
 
   const reference = `dual-email-adapter-demo-${Date.now()}`;
-  let sender: { id?: string; email_address?: string } | null = null;
+  const notifyTypeCode = `single-email-${reference}`;
+  let identity: { id?: string; emailAddress?: string } | null = null;
   let template: { id?: string; name?: string; subject?: string } | null = null;
   let nodemailerSucceeded = false;
   let chesSucceeded = false;
 
   try {
-    // ─── Step 1: Create sender (default for from address) ─────────────────────
-    step(1, 'Create sender identity');
-    sub('POST /v1/senders');
+    // ─── Step 1: Create identity (default for from address) ─────────────────────
+    step(1, 'Create identity');
+    sub('POST /api/v1/identities');
     sub('We register a verified CHES email address as the default sender.');
 
     try {
-      const createSenderRes = await fetch(v1('/senders'), {
+      const createIdentityRes = await fetch(apiV1('/identities'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,21 +181,21 @@ async function main(): Promise<void> {
         },
         body: JSON.stringify({
           type: 'email',
-          email_address: senderEmail,
-          is_default: true,
+          emailAddress: senderEmail,
+          isDefault: true,
         }),
       });
 
-      if (createSenderRes.status !== 201) {
-        const body = await createSenderRes.text();
-        fail(`Request failed (${createSenderRes.status}): ${body}`);
+      if (createIdentityRes.status !== 201) {
+        const body = await createIdentityRes.text();
+        fail(`Request failed (${createIdentityRes.status}): ${body}`);
       } else {
-        sender = (await createSenderRes.json()) as {
+        identity = (await createIdentityRes.json()) as {
           id?: string;
-          email_address?: string;
+          emailAddress?: string;
         };
-        ok(`Sender created: ${sender.email_address} (id: ${sender.id})`);
-        json({ id: sender.id, email_address: sender.email_address });
+        ok(`Identity created: ${identity.emailAddress} (id: ${identity.id})`);
+        json({ id: identity.id, emailAddress: identity.emailAddress });
       }
     } catch (err) {
       fail(
@@ -203,12 +204,27 @@ async function main(): Promise<void> {
     }
     divider();
 
-    // ─── Step 2: Create template ───────────────────────────────────────────
-    step(2, 'Create Handlebars template');
-    sub('POST /v1/templates');
+    // ─── Step 2: Create notifyType and template ─────────────────────────────────
+    step(2, 'Create notifyType and Handlebars template');
+    sub('POST /api/v1/notifyTypes, POST /api/v1/templates');
 
     try {
-      const createTemplateRes = await fetch(v1('/templates'), {
+      const createNotifyTypeRes = await fetch(apiV1('/notifyTypes'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(),
+        },
+        body: JSON.stringify({ code: notifyTypeCode, sendAs: 'email' }),
+      });
+      if (createNotifyTypeRes.status !== 201) {
+        const body = await createNotifyTypeRes.text();
+        fail(`NotifyType failed (${createNotifyTypeRes.status}): ${body}`);
+      } else {
+        ok(`NotifyType "${notifyTypeCode}" created`);
+      }
+
+      const createTemplateRes = await fetch(apiV1('/templates'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -253,13 +269,13 @@ async function main(): Promise<void> {
     divider();
 
     // ─── Step 3: Send via Nodemailer ────────────────────────────────────────
-    step(3, 'Send email via Nodemailer (Universal API)');
-    sub('POST /v1/notifications/email');
+    step(3, 'Send email via Nodemailer (Notify API)');
+    sub('POST /api/v1/notify');
     sub('Header: X-Delivery-Email-Adapter: nodemailer');
 
     if (template?.id) {
       try {
-        const nodemailerRes = await fetch(v1('/notifications/email'), {
+        const nodemailerRes = await fetch(apiV1('/notify'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -267,10 +283,18 @@ async function main(): Promise<void> {
             ...authHeaders(),
           },
           body: JSON.stringify({
-            to: email,
-            template_id: template.id,
-            personalisation: { name, subject, channel: 'nodemailer' },
-            reference: `${reference}-nodemailer`,
+            notifyType: notifyTypeCode,
+            override: {
+              common: {
+                to: [email],
+                templateId: template.id,
+                params: { name, subject, channel: 'nodemailer' },
+                sendAs: 'email',
+              },
+              email: identity?.id
+                ? { emailIdentityId: identity.id }
+                : undefined,
+            },
           }),
         });
 
@@ -284,18 +308,16 @@ async function main(): Promise<void> {
           );
         } else {
           const nodemailerNotification = JSON.parse(nodemailerBody) as {
-            id?: string;
-            reference?: string;
-            content?: { from_email?: string; subject?: string; body?: string };
+            notifyId?: string;
+            txId?: string;
+            messages?: Array<{ msgId: string; to: string[] }>;
           };
           nodemailerSucceeded = true;
           ok('Email sent via Nodemailer');
           ok(`To: ${email}`);
-          ok(`Subject: ${nodemailerNotification.content?.subject}`);
-          ok(`Reference: ${nodemailerNotification.reference}`);
           json({
-            id: nodemailerNotification.id,
-            reference: nodemailerNotification.reference,
+            notifyId: nodemailerNotification.notifyId,
+            txId: nodemailerNotification.txId,
           });
         }
       } catch (err) {
@@ -309,13 +331,13 @@ async function main(): Promise<void> {
     divider();
 
     // ─── Step 4: Send via CHES ──────────────────────────────────────────────
-    step(4, 'Send email via CHES (Universal API)');
-    sub('POST /v1/notifications/email');
+    step(4, 'Send email via CHES (Notify API)');
+    sub('POST /api/v1/notify');
     sub('Header: X-Delivery-Email-Adapter: ches');
 
     if (template?.id) {
       try {
-        const chesRes = await fetch(v1('/notifications/email'), {
+        const chesRes = await fetch(apiV1('/notify'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -323,10 +345,18 @@ async function main(): Promise<void> {
             ...authHeaders(),
           },
           body: JSON.stringify({
-            to: email,
-            template_id: template.id,
-            personalisation: { name, subject, channel: 'ches' },
-            reference: `${reference}-ches`,
+            notifyType: notifyTypeCode,
+            override: {
+              common: {
+                to: [email],
+                templateId: template.id,
+                params: { name, subject, channel: 'ches' },
+                sendAs: 'email',
+              },
+              email: identity?.id
+                ? { emailIdentityId: identity.id }
+                : undefined,
+            },
           }),
         });
 
@@ -338,18 +368,15 @@ async function main(): Promise<void> {
           );
         } else {
           const chesNotification = JSON.parse(chesBody) as {
-            id?: string;
-            reference?: string;
-            content?: { from_email?: string; subject?: string; body?: string };
+            notifyId?: string;
+            txId?: string;
           };
           chesSucceeded = true;
           ok('Email sent via CHES');
           ok(`To: ${email}`);
-          ok(`Subject: ${chesNotification.content?.subject}`);
-          ok(`Reference: ${chesNotification.reference}`);
           json({
-            id: chesNotification.id,
-            reference: chesNotification.reference,
+            notifyId: chesNotification.notifyId,
+            txId: chesNotification.txId,
           });
         }
       } catch (err) {
@@ -401,13 +428,13 @@ async function main(): Promise<void> {
       console.log(`${C.red}${C.bold}No sends succeeded.${C.reset}\n`);
     }
     console.log(`${C.dim}What we achieved:${C.reset}`);
-    console.log(`  • Sender: ${sender ? 'created' : 'failed/skipped'}`);
+    console.log(`  • Identity: ${identity ? 'created' : 'failed/skipped'}`);
     console.log(`  • Template: ${template ? 'created' : 'failed/skipped'}`);
     console.log(
       `  • Nodemailer send: ${nodemailerSucceeded ? 'ok' : 'failed/skipped'}`,
     );
     console.log(`  • CHES send: ${chesSucceeded ? 'ok' : 'failed/skipped'}`);
-    console.log(`  • All via universal API: POST /v1/notifications/email`);
+    console.log(`  • All via Notify API: POST /api/v1/notify`);
     console.log('');
   } catch (err) {
     fail(

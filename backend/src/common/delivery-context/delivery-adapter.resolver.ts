@@ -6,10 +6,13 @@ import { DeliveryContextService } from './delivery-context.service';
 export const GC_NOTIFY_CLIENT = 'gc-notify-client' as const;
 export const CHES_PASSTHROUGH_CLIENT = 'ches-passthrough-client' as const;
 
-function parseDeliveryKey(
-  key: string,
-): { provider: string; mode: 'adapter' | 'passthrough' } {
-  const [provider, mode] = key.includes(':') ? key.split(':') : [key, 'adapter'];
+function parseDeliveryKey(key: string): {
+  provider: string;
+  mode: 'adapter' | 'passthrough';
+} {
+  const [provider, mode] = key.includes(':')
+    ? key.split(':')
+    : [key, 'adapter'];
   return {
     provider,
     mode: mode === 'passthrough' ? 'passthrough' : 'adapter',

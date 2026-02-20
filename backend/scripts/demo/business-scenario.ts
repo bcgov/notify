@@ -30,8 +30,8 @@ const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
 const apiKey = process.env.E2E_API_KEY || process.env.API_KEY || '';
 const mailpitUrl = process.env.E2E_MAILPIT_URL;
 
-const gcNotify = (path: string) => `${baseUrl}/gc-notify/v2${path}`;
-const v1 = (path: string) => `${baseUrl}/v1${path}`;
+const apiV1 = (path: string) => `${baseUrl}/api/v1${path}`;
+const gcNotify = (path: string) => `${baseUrl}/api/v1/gcnotify${path}`;
 
 function authHeaders(): Record<string, string> {
   if (!apiKey) return {};
@@ -145,14 +145,14 @@ async function main(): Promise<void> {
   const recipientEmail = `demo-recipient-${Date.now()}@example.com`;
 
   try {
-    // ─── Step 1: Create sender ────────────────────────────────────────────
-    step(1, 'Create a sender identity');
-    sub('POST /v1/senders');
+    // ─── Step 1: Create identity ────────────────────────────────────────────
+    step(1, 'Create an identity');
+    sub('POST /api/v1/identities');
     sub(
       'We register an email address that will appear as the "From" for our notifications.',
     );
 
-    const createSenderRes = await fetch(v1('/senders'), {
+    const createIdentityRes = await fetch(apiV1('/identities'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -160,41 +160,41 @@ async function main(): Promise<void> {
       },
       body: JSON.stringify({
         type: 'email',
-        email_address: 'demo-sender@example.com',
-        is_default: true,
+        emailAddress: 'demo-sender@example.com',
+        isDefault: true,
       }),
     });
 
-    if (createSenderRes.status !== 201) {
-      const body = await createSenderRes.text();
-      fail(`Request failed (${createSenderRes.status}): ${body}`);
+    if (createIdentityRes.status !== 201) {
+      const body = await createIdentityRes.text();
+      fail(`Request failed (${createIdentityRes.status}): ${body}`);
       process.exit(1);
     }
 
-    const sender = (await createSenderRes.json()) as {
+    const identity = (await createIdentityRes.json()) as {
       id?: string;
       type?: string;
-      email_address?: string;
-      is_default?: boolean;
-      created_at?: string;
+      emailAddress?: string;
+      isDefault?: boolean;
+      createdAt?: string;
     };
 
-    ok(`Sender created: ${sender.email_address} (id: ${sender.id})`);
+    ok(`Identity created: ${identity.emailAddress} (id: ${identity.id})`);
     json({
-      id: sender.id,
-      email_address: sender.email_address,
-      is_default: sender.is_default,
+      id: identity.id,
+      emailAddress: identity.emailAddress,
+      isDefault: identity.isDefault,
     });
     divider();
 
     // ─── Step 2: Create template ────────────────────────────────────────────
     step(2, 'Create a reusable email template');
-    sub('POST /v1/templates');
+    sub('POST /api/v1/templates');
     sub(
       'Templates use placeholders (e.g. {{name}}) that are filled when sending.',
     );
 
-    const createTemplateRes = await fetch(v1('/templates'), {
+    const createTemplateRes = await fetch(apiV1('/templates'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -237,7 +237,7 @@ async function main(): Promise<void> {
 
     // ─── Step 3: Send notification ────────────────────────────────────────
     step(3, 'Send a personalised notification');
-    sub('POST /gc-notify/v2/notifications/email');
+    sub('POST /api/v1/gcnotify/notifications/email');
     sub(
       'We send an email using the template, filling in personalisation values.',
     );
@@ -253,7 +253,7 @@ async function main(): Promise<void> {
         template_id: template.id,
         personalisation: { name: 'Demo User', reference },
         reference,
-        email_reply_to_id: sender.id,
+        email_reply_to_id: identity.id,
       }),
     });
 

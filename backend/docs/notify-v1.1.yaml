@@ -1,0 +1,2439 @@
+openapi: 3.0.2
+info:
+  title: Unified Notify API (Notify + CHES + GCNotify)
+  version: 1.0.1
+  description: >
+    Unified notification API providing a provider-agnostic /notify interface, plus provider-specific extensions for CHES and GCNotify. The unified /notify endpoints use notifyType-based defaults with override/augment semantics, and /notify/preview returns fully resolved, flat gateway payloads. All endpoints require a JWT with a tenantId claim.
+
+servers:
+  - url: /api/v1
+    description: Default server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: CHES
+    description: >
+      Passthrough API for CHES v1. Supports existing users of the Common Hosted Email Service.
+      These endpoints will be deprecated and replaced by the unified /notify API.
+  - name: GC Notify
+    description: >
+      Passthrough API for GC Notify v2. Supports existing users of the GC Notify service.
+      These endpoints will be deprecated and replaced by the unified /notify API.
+
+paths:
+  /health:
+    get:
+      summary: Top-level health check
+      description: Returns the state and connectivity of the API and its dependencies.
+      operationId: health_check
+      tags: [Health]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: API health
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dependencies]
+                properties:
+                  dependencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Health'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /ches/email:
+    post:
+      summary: Send an email
+      operationId: ches_postEmail
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChesMessageObject'
+      responses:
+        '201':
+          description: Email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChesTransactionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/emailMerge:
+    post:
+      summary: Template mail merge and email sending
+      operationId: ches_postMerge
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChesMergeRequest'
+      responses:
+        '201':
+          description: Merge completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChesMergeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/emailMerge/preview:
+    post:
+      summary: Template mail merge validation and preview
+      operationId: ches_postPreview
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChesMergeRequest'
+      responses:
+        '200':
+          description: Preview result
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChesMessageObject'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/status:
+    get:
+      summary: Query CHES message status
+      operationId: ches_GetStatusQuery
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QueryMessageId'
+        - $ref: '#/components/parameters/QueryStatus'
+        - $ref: '#/components/parameters/QueryTag'
+        - $ref: '#/components/parameters/QueryTransactionId'
+      responses:
+        '200':
+          description: Status list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChesStatusObject'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/status/{msgId}:
+    get:
+      summary: Get CHES message status
+      operationId: ches_GetStatusMessage
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathMessageId'
+      responses:
+        '200':
+          description: Message status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChesStatusObject'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/promote:
+    post:
+      summary: Promote CHES messages
+      operationId: ches_PostPromoteQuery
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QueryMessageId'
+        - $ref: '#/components/parameters/QueryStatus'
+        - $ref: '#/components/parameters/QueryTag'
+        - $ref: '#/components/parameters/QueryTransactionId'
+      responses:
+        '202':
+          description: Promotion accepted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/promote/{msgId}:
+    post:
+      summary: Promote a single CHES message
+      operationId: ches_PostPromoteMessage
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathMessageId'
+      responses:
+        '202':
+          description: Promotion accepted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/cancel:
+    delete:
+      summary: Cancel CHES messages
+      operationId: ches_DeleteCancelQuery
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QueryMessageId'
+        - $ref: '#/components/parameters/QueryStatus'
+        - $ref: '#/components/parameters/QueryTag'
+        - $ref: '#/components/parameters/QueryTransactionId'
+      responses:
+        '202':
+          description: Cancellation accepted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/cancel/{msgId}:
+    delete:
+      summary: Cancel a single CHES message
+      operationId: ches_DeleteCancelMessage
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathMessageId'
+      responses:
+        '202':
+          description: Cancellation accepted
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+  /ches/health:
+    get:
+      summary: CHES health
+      operationId: ches_getHealth
+      tags: [CHES]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: CHES health status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dependencies]
+                properties:
+                  dependencies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChesHealth'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /notify:
+    post:
+      summary: Send a notification using stored defaults for notifyType
+      description: >
+        Primary unified endpoint. The request MUST include a single "notifyType"
+        which identifies a set of defaults configured in the UI. The request may
+        include "override" to replace defaults entirely, or "augment" to merge
+        additional values with the defaults.
+
+        **Single or broadcast**: Use override.common.to (or override.email.to / override.sms.to)
+        with override.common.params. All recipients receive the same template with the same
+        personalisation. Single = one recipient, broadcast = multiple recipients, same content.
+
+        **Mail merge**: Use override.common.contexts instead. Each context has its own to and params,
+        so each recipient gets different personalisation (e.g. "Hello {{name}}" with name per recipient).
+        When contexts is present, it takes precedence over to+params.
+      operationId: notify_send
+      tags: [Notify]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifyRequest'
+            examples:
+              single:
+                summary: Single recipient
+                description: One recipient. Use to + params. Same content for that recipient.
+                value:
+                  notifyType: appointment-reminder
+                  callbackId: my-callback-123
+                  scheduledFor: "2025-02-20T14:00:00Z"
+                  metadata:
+                    campaignId: campaign-001
+                    source: web
+                  override:
+                    common:
+                      to: [user@example.com]
+                      templateId: "12345678-1234-1234-1234-123456789012"
+                      subject: "Your appointment reminder"
+                      body: "Hello {{name}}, your appointment is on {{date}}."
+                      bodyType: html
+                      params:
+                        name: Alice
+                        date: "Monday 9:00 AM"
+                      sendAs: email
+                    email:
+                      emailIdentityId: "87654321-4321-4321-4321-210987654321"
+                      cc: []
+                      bcc: []
+                      encoding: utf-8
+                      priority: normal
+              broadcast:
+                summary: Broadcast (same content, multiple recipients)
+                description: Multiple recipients, same content for all. Use to (array) + params. Each recipient gets the same personalised message.
+                value:
+                  notifyType: newsletter
+                  callbackId: newsletter-feb-2025
+                  metadata:
+                    campaignId: newsletter-feb
+                  override:
+                    common:
+                      to:
+                        - alice@example.com
+                        - bob@example.com
+                        - carol@example.com
+                      templateId: "12345678-1234-1234-1234-123456789012"
+                      subject: "{{month}} {{year}} Newsletter"
+                      body: "Welcome to our {{month}} {{year}} update."
+                      bodyType: html
+                      params:
+                        month: January
+                        year: "2025"
+                      sendAs: email
+                    email:
+                      emailIdentityId: "87654321-4321-4321-4321-210987654321"
+                      cc: []
+                      bcc: []
+                      encoding: utf-8
+                      priority: normal
+              mailMerge:
+                summary: Mail merge (different content per recipient)
+                description: Multiple recipients, different content each. Use contexts instead of to+params. Each context has its own to and params for per-recipient personalisation.
+                value:
+                  notifyType: appointment-reminder
+                  override:
+                    common:
+                      contexts:
+                        - to: [alice@example.com]
+                          params:
+                            name: Alice
+                            date: "Monday 9:00 AM"
+                        - to: [bob@example.com]
+                          params:
+                            name: Bob
+                            date: "Tuesday 2:00 PM"
+      responses:
+        '201':
+          description: Notification accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /notify/preview:
+    post:
+      summary: Preview the exact payloads that would be sent to gateways
+      description: >
+        Returns the fully resolved, final payload(s) that would be sent to the
+        SMTP or SMS gateway after applying defaults and override/augment.
+        The returned structure is a flat array of exact gateway payloads.
+      operationId: notify_preview
+      tags: [Notify]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifyRequest'
+      responses:
+        '200':
+          description: Resolved gateway payloads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResolvedGatewayPayload'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /notify/status/{notifyId}:
+    get:
+      summary: Get status for a notify transaction
+      operationId: notify_getStatus
+      tags: [Notify]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathNotifyId'
+      responses:
+        '200':
+          description: Notify status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyStatus'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /notify/cancel/{notifyId}:
+    delete:
+      summary: Cancel a notify transaction
+      operationId: notify_cancel
+      tags: [Notify]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PathNotifyId'
+      responses:
+        '202':
+          description: Cancellation accepted
+          headers:
+            Content-Location:
+              schema:
+                type: string
+                format: uri
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /notify/registerCallback:
+    post:
+      summary: Register a callback endpoint
+      operationId: notify_registerCallback
+      tags: [Notify]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallbackRegistration'
+      responses:
+        '201':
+          description: Callback registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallbackRegistrationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /gcnotify/notifications:
+    get:
+      summary: Get list of notifications
+      operationId: gcnotify_getNotifications
+      tags: [GC Notify]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: template_type
+          in: query
+          schema:
+            type: string
+            enum: [sms, email]
+        - name: status
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [created, in-transit, pending, sent, delivered, failed]
+        - name: reference
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: older_than
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: include_jobs
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Notification list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  links:
+                    $ref: '#/components/schemas/GcNotifyLinks'
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GcNotifyNotification'
+        default:
+          $ref: '#/components/responses/Error'
+  /gcnotify/notifications/bulk:
+    post:
+      summary: Send bulk notifications
+      operationId: gcnotify_sendBulkNotifications
+      tags: [GC Notify]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GcNotifyPostBulkRequest'
+      responses:
+        '201':
+          description: Bulk notifications sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GcNotifyPostBulkResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /gcnotify/notifications/email:
+    post:
+      summary: Send email notification
+      operationId: gcnotify_sendEmailNotification
+      tags: [GC Notify]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GcNotifyCreateEmailNotificationRequest'
+      responses:
+        '201':
+          description: Email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GcNotifyNotificationResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /gcnotify/notifications/sms:
+    post:
+      summary: Send SMS notification
+      operationId: gcnotify_sendSmsNotification
+      tags: [GC Notify]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GcNotifyCreateSmsNotificationRequest'
+      responses:
+        '201':
+          description: SMS sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GcNotifyNotificationResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /gcnotify/notifications/{notification-id}:
+    get:
+      summary: Get notification by ID
+      operationId: gcnotify_getNotificationById
+      tags: [GC Notify]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: notification-id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GcNotifyNotification'
+        default:
+          $ref: '#/components/responses/Error'
+  /gcnotify/template/{template-id}:
+    get:
+      summary: Get template by ID
+      operationId: gcnotify_getTemplate
+      tags: [GC Notify]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: template-id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GcNotifyTemplate'
+        default:
+          $ref: '#/components/responses/Error'
+  /gcnotify/templates:
+    get:
+      summary: Get list of templates
+      operationId: gcnotify_getTemplates
+      tags: [GC Notify]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [sms, email]
+      responses:
+        '200':
+          description: Template list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GcNotifyTemplate'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /identities:
+    get:
+      summary: List identities
+      operationId: identities_list
+      tags: [Identities]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [email, sms, email+sms]
+      responses:
+        '200':
+          description: Identity list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  identities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Identity'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Create identity
+      operationId: identities_create
+      tags: [Identities]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIdentityRequest'
+      responses:
+        '201':
+          description: Identity created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        default:
+          $ref: '#/components/responses/Error'
+  /identities/{id}:
+    get:
+      summary: Get identity by ID
+      operationId: identities_get
+      tags: [Identities]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Identity details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Update identity
+      operationId: identities_update
+      tags: [Identities]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateIdentityRequest'
+      responses:
+        '200':
+          description: Identity updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Delete identity
+      operationId: identities_delete
+      tags: [Identities]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /notifyTypes:
+    get:
+      summary: List notify types
+      operationId: notifyTypes_list
+      tags: [NotifyTypes]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Notify type list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifyTypes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotifyType'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Create notify type
+      operationId: notifyTypes_create
+      tags: [NotifyTypes]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNotifyTypeRequest'
+      responses:
+        '201':
+          description: Notify type created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyType'
+        default:
+          $ref: '#/components/responses/Error'
+  /notifyTypes/{id}:
+    get:
+      summary: Get notify type by ID
+      operationId: notifyTypes_get
+      tags: [NotifyTypes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notify type details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyType'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Update notify type
+      operationId: notifyTypes_update
+      tags: [NotifyTypes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotifyTypeRequest'
+      responses:
+        '200':
+          description: Notify type updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifyType'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Delete notify type
+      operationId: notifyTypes_delete
+      tags: [NotifyTypes]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /templates:
+    get:
+      summary: List templates
+      operationId: templates_list
+      tags: [Templates]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [sms, email]
+      responses:
+        '200':
+          description: Template list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Template'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Create template
+      operationId: templates_create
+      tags: [Templates]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        default:
+          $ref: '#/components/responses/Error'
+  /templates/{id}:
+    get:
+      summary: Get template by ID
+      operationId: templates_get
+      tags: [Templates]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Update template
+      operationId: templates_update
+      tags: [Templates]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTemplateRequest'
+      responses:
+        '200':
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Delete template
+      operationId: templates_delete
+      tags: [Templates]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /adapters:
+    get:
+      summary: List available adapters
+      description: Returns email, sms, and renderer adapter IDs. Use these values for template.renderer, notifyType.renderer, and tenant defaults.
+      operationId: adapters_list
+      tags: [Adapters]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Adapter list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdaptersResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /defaults:
+    get:
+      summary: Get tenant defaults
+      operationId: defaults_get
+      tags: [Defaults]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Tenant defaults
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDefaults'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Update tenant defaults
+      operationId: defaults_put
+      tags: [Defaults]
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantDefaults'
+      responses:
+        '200':
+          description: Defaults updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantDefaults'
+        default:
+          $ref: '#/components/responses/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JWT bearer token. Token MUST include a top-level claim named "tenantId"
+        which identifies the tenant whose defaults and settings apply to the request.
+
+  parameters:
+    PathNotifyId:
+      name: notifyId
+      in: path
+      required: true
+      description: Notify transaction id (uuid)
+      schema:
+        type: string
+        format: uuid
+
+    PathMessageId:
+      name: msgId
+      in: path
+      required: true
+      description: CHES message id (uuid)
+      schema:
+        type: string
+        format: uuid
+
+    QueryMessageId:
+      name: msgId
+      in: query
+      required: false
+      description: Filter CHES messages by message id
+      schema:
+        type: string
+        format: uuid
+
+    QueryStatus:
+      name: status
+      in: query
+      required: false
+      description: Filter CHES messages by status
+      schema:
+        type: string
+        enum: [accepted, cancelled, completed, failed, pending]
+
+    QueryTag:
+      name: tag
+      in: query
+      required: false
+      description: Filter CHES messages by tag
+      schema:
+        type: string
+
+    QueryTransactionId:
+      name: txId
+      in: query
+      required: false
+      description: Filter CHES messages by transaction id
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Request is malformed or missing required fields
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BadRequest'
+
+    Forbidden:
+      description: Access token missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UnauthorizedError:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFound'
+
+    Conflict:
+      description: Request conflicts with server state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Conflict'
+
+    UnprocessableEntity:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+    Error:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    # --- Unified (alphabetical) ---
+    AdaptersResponse:
+      type: object
+      required: [email, sms, renderers]
+      properties:
+        email:
+          type: array
+          items:
+            type: string
+          description: Available email adapter IDs (e.g. nodemailer, ches)
+        sms:
+          type: array
+          items:
+            type: string
+          description: Available SMS adapter IDs (e.g. twilio)
+        renderers:
+          type: array
+          items:
+            type: string
+          description: Available template renderer IDs. Use these values for template.renderer and notifyType.renderer.
+    AttachmentObject:
+      type: object
+      properties:
+        content:
+          type: string
+        contentType:
+          type: string
+        encoding:
+          type: string
+          enum: [base64, binary, hex]
+        filename:
+          type: string
+    BadRequest:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+    CallbackEvent:
+      type: object
+      properties:
+        notifyId:
+          type: string
+          format: uuid
+        msgId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/StatusType'
+        timestamp:
+          type: integer
+        details:
+          type: object
+          additionalProperties: true
+    CallbackRegistration:
+      type: object
+      required: [callbackUrl]
+      properties:
+        callbackUrl:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum: [POST, PUT]
+          default: POST
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        description:
+          type: string
+    CallbackRegistrationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        callbackUrl:
+          type: string
+        createdTS:
+          type: integer
+    CommonFields:
+      type: object
+      description: >
+        Override common fields across channels. Template fields align with Template schema.
+        Use to+params for single or broadcast (same content for all). Use contexts for
+        mail merge (per-recipient personalisation). When contexts is present, it takes
+        precedence over to+params.
+      properties:
+        to:
+          type: array
+          items:
+            type: string
+          description: Recipients for single/broadcast. Email addresses or phone numbers per sendAs. Same params apply to all.
+        templateId:
+          type: string
+          format: uuid
+          description: Reference to Template (GET /templates).
+        subject:
+          type: string
+          description: Aligns with Template.subject
+        body:
+          type: string
+          description: Plain body or ad-hoc template string. When template string, use with renderer.
+        bodyType:
+          type: string
+          enum: [html, text]
+          description: Content type. Only applies to email.
+        renderer:
+          type: string
+          description: Required when body is an ad-hoc template string. Valid values from GET /adapters renderers list.
+        params:
+          type: object
+          additionalProperties:
+            type: string
+          description: Template variables for single/broadcast. Same params for all recipients. Aligns with Template.personalisation
+        contexts:
+          type: array
+          items:
+            $ref: '#/components/schemas/MergeContext'
+          description: >
+            Mail merge mode. One shared template with per-recipient personalisation.
+            When present, replaces to+params. Each context produces one or more messages.
+        callbackId:
+          type: string
+        sendAs:
+          type: string
+          enum: [email, sms, both]
+    Conflict:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+    CreateIdentityRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [email, sms, email+sms]
+        emailAddress:
+          type: string
+          format: email
+        smsSender:
+          type: string
+    CreateNotifyTypeRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+        sendAs:
+          type: string
+          enum: [email, sms, both]
+        templateId:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        renderer:
+          type: string
+          description: Valid values from GET /adapters renderers list.
+        subject:
+          type: string
+        body:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            type: string
+    CreateTemplateRequest:
+      type: object
+      required: [name, type, body]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [sms, email]
+        subject:
+          type: string
+        body:
+          type: string
+        bodyType:
+          type: string
+          enum: [html, text]
+        personalisation:
+          type: object
+          additionalProperties:
+            type: string
+        active:
+          type: boolean
+          default: true
+        renderer:
+          type: string
+          description: Valid values from GET /adapters renderers list.
+    EmailFields:
+      type: object
+      description: >
+        Override email channel. Use identity reference OR ad-hoc values.
+        Ad-hoc field names align with Identity and Template schemas.
+      properties:
+        emailIdentityId:
+          type: string
+          format: uuid
+          description: Reference to Identity (GET /identities). Use when sending from a stored identity.
+        emailAddress:
+          type: string
+          format: email
+          description: Ad-hoc sender address. Aligns with Identity.emailAddress. Use when not referencing an identity.
+        to:
+          type: array
+          items:
+            type: string
+          description: Recipient email addresses
+        cc:
+          type: array
+          items:
+            type: string
+        bcc:
+          type: array
+          items:
+            type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/AttachmentObject'
+        encoding:
+          type: string
+          enum: [utf-8, base64, binary, hex]
+        priority:
+          type: string
+          enum: [high, normal, low]
+        templateId:
+          type: string
+          format: uuid
+          description: Reference to Template (GET /templates). Use when sending from a stored template.
+        subject:
+          type: string
+          description: Aligns with Template.subject
+        body:
+          type: string
+          description: Plain body or ad-hoc template string. When template string, use with renderer.
+        bodyType:
+          type: string
+          enum: [html, text]
+          description: Content type. Only applies to email.
+        renderer:
+          type: string
+          description: Required when body is an ad-hoc template string. Valid values from GET /adapters renderers list.
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+    EmailSendPayload:
+      type: object
+      required: [from, to, subject, bodyEncoded]
+      properties:
+        from:
+          type: string
+        to:
+          type: array
+          items:
+            type: string
+        cc:
+          type: array
+          items:
+            type: string
+        bcc:
+          type: array
+          items:
+            type: string
+        subject:
+          type: string
+        bodyEncoded:
+          type: string
+        bodyEncoding:
+          type: string
+          enum: [utf-8, base64, binary, hex]
+        bodyType:
+          type: string
+          enum: [html, text]
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/EncodedAttachment'
+        priority:
+          type: string
+          enum: [high, normal, low]
+        msgId:
+          type: string
+          format: uuid
+        txId:
+          type: string
+          format: uuid
+    EncodedAttachment:
+      type: object
+      required: [filename, contentEncoded]
+      properties:
+        filename:
+          type: string
+        contentEncoded:
+          type: string
+        contentType:
+          type: string
+        encoding:
+          type: string
+          enum: [base64, binary, hex]
+    Error:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+    Health:
+      type: object
+      required: [name, healthy, info]
+      properties:
+        name:
+          type: string
+        healthy:
+          type: boolean
+        info:
+          type: string
+    Identity:
+      type: object
+      required: [id, type]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [email, sms, email+sms]
+        emailAddress:
+          type: string
+          format: email
+        smsSender:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    MergeContext:
+      type: object
+      required: [to]
+      description: >
+        One entry in a mail merge. Each context produces one or more messages with
+        its own recipients and template variables. Use when override.common.contexts
+        is present (mail merge mode).
+      properties:
+        to:
+          type: array
+          items:
+            type: string
+          description: Recipients for this message (email addresses or phone numbers per channel)
+        params:
+          type: object
+          additionalProperties:
+            type: string
+          description: Template variables for this recipient. Aligns with Template.personalisation
+        tag:
+          type: string
+          description: Optional tag for tracking (CHES-style)
+        scheduledFor:
+          type: string
+          format: date-time
+          description: Per-recipient schedule override. ISO 8601 format, UTC.
+    MessageAssociation:
+      type: object
+      required: [msgId, channel]
+      properties:
+        msgId:
+          type: string
+          format: uuid
+        channel:
+          type: string
+          enum: [email, sms]
+        to:
+          type: array
+          items:
+            type: string
+    NotFound:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+    NotifyRequest:
+      type: object
+      required: [notifyType]
+      properties:
+        notifyType:
+          type: string
+          description: Identifier for a stored defaults profile
+        override:
+          $ref: '#/components/schemas/OverrideOrAugment'
+        augment:
+          $ref: '#/components/schemas/OverrideOrAugment'
+        callbackId:
+          type: string
+        scheduledFor:
+          type: string
+          format: date-time
+          description: Schedule notification for future delivery. ISO 8601 format, UTC. Up to 4 days in the future. Omit for immediate send.
+        metadata:
+          type: object
+          additionalProperties: true
+    NotifyResponse:
+      type: object
+      required: [notifyId, txId]
+      properties:
+        notifyId:
+          type: string
+          format: uuid
+        txId:
+          type: string
+          format: uuid
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/MessageAssociation'
+    NotifyStatus:
+      type: object
+      required: [notifyId, txId, status, createdTS]
+      properties:
+        notifyId:
+          type: string
+          format: uuid
+        txId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/StatusType'
+        createdTS:
+          type: integer
+        updatedTS:
+          type: integer
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatusObject'
+        metadata:
+          type: object
+          additionalProperties: true
+    NotifyType:
+      type: object
+      required: [id, code]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Identifier used in notifyType
+        sendAs:
+          type: string
+          enum: [email, sms, both]
+        templateId:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        renderer:
+          type: string
+          description: Optional. Template renderer ID. Used when template does not specify one. Valid values from GET /adapters renderers list.
+        subject:
+          type: string
+        body:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    OverrideOrAugment:
+      type: object
+      properties:
+        email:
+          $ref: '#/components/schemas/EmailFields'
+        sms:
+          $ref: '#/components/schemas/SMSFields'
+        common:
+          $ref: '#/components/schemas/CommonFields'
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: number
+        detail:
+          type: string
+    ResolvedGatewayPayload:
+      type: object
+      required: [channel, payload]
+      properties:
+        channel:
+          type: string
+          enum: [email, sms]
+        payload:
+          oneOf:
+            - $ref: '#/components/schemas/EmailSendPayload'
+            - $ref: '#/components/schemas/SMSSendPayload'
+        metadata:
+          type: object
+          additionalProperties: true
+    SMSFields:
+      type: object
+      description: >
+        Override SMS channel. Use identity reference OR ad-hoc values.
+        Ad-hoc field names align with Identity and Template schemas.
+      properties:
+        smsIdentityId:
+          type: string
+          format: uuid
+          description: Reference to Identity (GET /identities). Use when sending from a stored identity.
+        smsSender:
+          type: string
+          description: Ad-hoc sender number or shortcode. Aligns with Identity.smsSender. Use when not referencing an identity.
+        to:
+          type: array
+          items:
+            type: string
+          description: Recipient phone numbers
+        templateId:
+          type: string
+          format: uuid
+          description: Reference to Template (GET /templates). Use when sending from a stored template.
+        body:
+          type: string
+          description: Plain body or ad-hoc template string. When template string, use with renderer.
+        renderer:
+          type: string
+          description: Required when body is an ad-hoc template string. Valid values from GET /adapters renderers list.
+        callbackId:
+          type: string
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+    SMSSendPayload:
+      type: object
+      required: [to, bodyEncoded]
+      properties:
+        to:
+          type: array
+          items:
+            type: string
+        fromShortcode:
+          type: string
+        shortcode:
+          type: string
+        bodyEncoded:
+          type: string
+        bodyEncoding:
+          type: string
+          enum: [utf-8, base64, binary, hex]
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        msgId:
+          type: string
+          format: uuid
+        txId:
+          type: string
+          format: uuid
+        callbackId:
+          type: string
+    SmtpObject:
+      type: object
+      properties:
+        smtpMsgId:
+          type: string
+        response:
+          type: string
+    StatusHistoryObject:
+      type: array
+      items:
+        type: object
+        required: [description, status, timestamp]
+        properties:
+          description:
+            type: string
+          status:
+            $ref: '#/components/schemas/StatusType'
+          timestamp:
+            type: integer
+    StatusObject:
+      type: object
+      required: [createdTS, delayTS, msgId, smtpResponse, status, statusHistory, tag, txId, updatedTS]
+      properties:
+        createdTS:
+          type: integer
+        delayTS:
+          type: integer
+        msgId:
+          type: string
+          format: uuid
+        smtpResponse:
+          $ref: '#/components/schemas/SmtpObject'
+        status:
+          $ref: '#/components/schemas/StatusType'
+        statusHistory:
+          $ref: '#/components/schemas/StatusHistoryObject'
+        tag:
+          type: string
+        txId:
+          type: string
+          format: uuid
+        updatedTS:
+          type: integer
+    StatusType:
+      type: string
+      enum: [accepted, cancelled, completed, failed, pending]
+    Template:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [sms, email]
+        subject:
+          type: string
+        body:
+          type: string
+        bodyType:
+          type: string
+          enum: [html, text]
+        personalisation:
+          type: object
+          additionalProperties:
+            type: string
+        active:
+          type: boolean
+        renderer:
+          type: string
+          description: Optional. Template renderer ID. Falls back to notifyType.renderer or default when absent. Valid values from GET /adapters renderers list.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+    TenantDefaults:
+      type: object
+      properties:
+        emailAdapter:
+          type: string
+          description: Valid values from GET /adapters email list.
+        smsAdapter:
+          type: string
+          description: Valid values from GET /adapters sms list.
+        emailIdentityId:
+          type: string
+          format: uuid
+          description: Valid values from GET /identities.
+        smsIdentityId:
+          type: string
+          format: uuid
+          description: Valid values from GET /identities.
+        renderer:
+          type: string
+          description: Valid values from GET /adapters renderers list.
+        priority:
+          type: string
+          enum: [high, normal, low]
+        encoding:
+          type: string
+          enum: [utf-8, base64, binary, hex]
+        bodyType:
+          type: string
+          enum: [html, text]
+        updatedAt:
+          type: string
+          format: date-time
+    UpdateIdentityRequest:
+      type: object
+      properties:
+        emailAddress:
+          type: string
+          format: email
+        smsSender:
+          type: string
+    UpdateNotifyTypeRequest:
+      type: object
+      properties:
+        sendAs:
+          type: string
+          enum: [email, sms, both]
+        templateId:
+          type: string
+          format: uuid
+        identityId:
+          type: string
+          format: uuid
+        renderer:
+          type: string
+          description: Valid values from GET /adapters renderers list.
+        subject:
+          type: string
+        body:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            type: string
+    UpdateTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        bodyType:
+          type: string
+          enum: [html, text]
+        personalisation:
+          type: object
+          additionalProperties:
+            type: string
+        active:
+          type: boolean
+        renderer:
+          type: string
+          description: Valid values from GET /adapters renderers list.
+    ValidationError:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: array
+              items:
+                type: object
+                required: [message]
+                properties:
+                  value:
+                    type: object
+                  message:
+                    type: string
+
+    # --- GC Notify (alphabetical) ---
+    GcNotifyCreateEmailNotificationRequest:
+      type: object
+      required: [email_address, template_id]
+      properties:
+        email_address:
+          type: string
+          format: email
+        email_reply_to_id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+        personalisation:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - $ref: '#/components/schemas/GcNotifyFileAttachment'
+        reference:
+          type: string
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        template_id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+    GcNotifyCreateSmsNotificationRequest:
+      type: object
+      required: [phone_number, template_id]
+      properties:
+        phone_number:
+          type: string
+        personalisation:
+          type: object
+          additionalProperties:
+            type: string
+        reference:
+          type: string
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        sms_sender_id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+        template_id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+    GcNotifyEmailContent:
+      type: object
+      required: [from_email, body, subject]
+      properties:
+        body:
+          type: string
+        from_email:
+          type: string
+          format: email
+        subject:
+          type: string
+    GcNotifyFileAttachment:
+      type: object
+      required: [file, filename, sending_method]
+      properties:
+        file:
+          type: string
+        filename:
+          type: string
+        sending_method:
+          type: string
+          enum: [attach, link]
+    GcNotifyLinks:
+      type: object
+      required: [current]
+      properties:
+        current:
+          type: string
+        next:
+          type: string
+    GcNotifyNotification:
+      type: object
+      properties:
+        body:
+          type: string
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        email_address:
+          type: string
+          format: email
+          nullable: true
+        id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+        phone_number:
+          type: string
+          nullable: true
+        reference:
+          type: string
+          nullable: true
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [created, sending, pending, delivered, permanent-failure, temporary-failure, technical-failure, pending-virus-check, virus-scan-failed]
+        subject:
+          type: string
+          nullable: true
+        template:
+          $ref: '#/components/schemas/GcNotifyNotificationTemplate'
+        type:
+          type: string
+          enum: [sms, email]
+    GcNotifyNotificationResponse:
+      type: object
+      required: [id, content, uri, template]
+      properties:
+        content:
+          oneOf:
+            - $ref: '#/components/schemas/GcNotifyEmailContent'
+            - $ref: '#/components/schemas/GcNotifySmsContent'
+        id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+        reference:
+          type: string
+          nullable: true
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        template:
+          $ref: '#/components/schemas/GcNotifyNotificationTemplate'
+        uri:
+          type: string
+          format: uri
+    GcNotifyNotificationTemplate:
+      type: object
+      required: [id, version, uri]
+      properties:
+        id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+        uri:
+          type: string
+          format: uri
+        version:
+          type: integer
+    GcNotifyPostBulkRequest:
+      type: object
+      required: [template_id, name]
+      properties:
+        csv:
+          type: string
+          format: binary
+        name:
+          type: string
+        reference:
+          type: string
+        reply_to_id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+          nullable: true
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        scheduled_for:
+          type: string
+          format: date-time
+          nullable: true
+        template_id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+    GcNotifyPostBulkResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/GcNotifyUUID'
+            job_status:
+              type: string
+              enum: [pending, in progress, finished, sending limits exceeded, scheduled, cancelled, ready to send, sent to dvla, error]
+            notification_count:
+              type: integer
+            template:
+              $ref: '#/components/schemas/GcNotifyUUID'
+    GcNotifySmsContent:
+      type: object
+      required: [body, from_number]
+      properties:
+        body:
+          type: string
+        from_number:
+          type: string
+    GcNotifyTemplate:
+      type: object
+      required: [id, name, type, body, active, created_at]
+      properties:
+        active:
+          type: boolean
+        body:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        description:
+          type: string
+        id:
+          $ref: '#/components/schemas/GcNotifyUUID'
+        name:
+          type: string
+        personalisation:
+          type: object
+          additionalProperties:
+            type: string
+        subject:
+          type: string
+        type:
+          type: string
+          enum: [sms, email]
+        updated_at:
+          type: string
+          format: date-time
+    GcNotifyUUID:
+      type: string
+      format: uuid
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+
+    # --- CHES (alphabetical) ---
+    ChesAttachmentObject:
+      type: object
+      properties:
+        content:
+          type: string
+        contentType:
+          type: string
+        encoding:
+          type: string
+          enum: [base64, binary, hex]
+        filename:
+          type: string
+    ChesContextObject:
+      type: object
+      required: [context, to]
+      properties:
+        bcc:
+          type: array
+          items:
+            type: string
+        cc:
+          type: array
+          items:
+            type: string
+        context:
+          type: object
+          additionalProperties: true
+        delayTS:
+          type: integer
+        tag:
+          type: string
+        to:
+          type: array
+          items:
+            type: string
+    ChesError:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+    ChesHealth:
+      type: object
+      required: [name, healthy, info]
+      properties:
+        name:
+          type: string
+        healthy:
+          type: boolean
+        info:
+          type: string
+    ChesMergeRequest:
+      type: object
+      required: [bodyType, body, contexts, from, subject]
+      properties:
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChesAttachmentObject'
+        bodyType:
+          type: string
+          enum: [html, text]
+        body:
+          type: string
+        contexts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChesContextObject'
+        encoding:
+          type: string
+          enum: [base64, binary, hex, utf-8]
+          default: utf-8
+        from:
+          type: string
+        priority:
+          type: string
+          enum: [normal, low, high]
+        subject:
+          type: string
+    ChesMergeResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/ChesTransactionResponse'
+    ChesMessageAssociation:
+      type: object
+      required: [msgId, to]
+      properties:
+        msgId:
+          type: string
+          format: uuid
+        tag:
+          type: string
+        to:
+          type: array
+          items:
+            type: string
+    ChesMessageObject:
+      type: object
+      required: [bodyType, body, from, to, subject]
+      properties:
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChesAttachmentObject'
+        bcc:
+          type: array
+          items:
+            type: string
+        bodyType:
+          type: string
+          enum: [html, text]
+        body:
+          type: string
+        cc:
+          type: array
+          items:
+            type: string
+        delayTS:
+          type: integer
+        encoding:
+          type: string
+          enum: [base64, binary, hex, utf-8]
+        from:
+          type: string
+        priority:
+          type: string
+          enum: [normal, low, high]
+        subject:
+          type: string
+        tag:
+          type: string
+        to:
+          type: array
+          items:
+            type: string
+    ChesSmtpObject:
+      type: object
+      properties:
+        smtpMsgId:
+          type: string
+        response:
+          type: string
+    ChesStatusHistoryObject:
+      type: array
+      items:
+        type: object
+        required: [description, status, timestamp]
+        properties:
+          description:
+            type: string
+          status:
+            $ref: '#/components/schemas/ChesStatusType'
+          timestamp:
+            type: integer
+    ChesStatusObject:
+      type: object
+      required: [createdTS, delayTS, msgId, smtpResponse, status, statusHistory, tag, txId, updatedTS]
+      properties:
+        createdTS:
+          type: integer
+        delayTS:
+          type: integer
+        msgId:
+          type: string
+          format: uuid
+        smtpResponse:
+          $ref: '#/components/schemas/ChesSmtpObject'
+        status:
+          $ref: '#/components/schemas/ChesStatusType'
+        statusHistory:
+          $ref: '#/components/schemas/ChesStatusHistoryObject'
+        tag:
+          type: string
+        txId:
+          type: string
+          format: uuid
+        updatedTS:
+          type: integer
+    ChesStatusType:
+      type: string
+      enum: [accepted, cancelled, completed, failed, pending]
+    ChesTransactionResponse:
+      type: object
+      required: [txId, messages]
+      properties:
+        txId:
+          type: string
+          format: uuid
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChesMessageAssociation'

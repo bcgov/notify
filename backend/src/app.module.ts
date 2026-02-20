@@ -8,9 +8,12 @@ import { TemplateResolutionModule } from './common/template-resolution/template-
 import { GcNotifyApiModule } from './gc-notify/v2/core/gc-notify-api.module';
 import { GcNotifyModule } from './gc-notify/gc-notify.module';
 import { TemplatesModule } from './templates/templates.module';
-import { SendersModule } from './senders/senders.module';
+import { IdentitiesModule } from './identities/identities.module';
+import { DefaultsModule } from './defaults/defaults.module';
+import { NotifyTypesModule } from './notify-types/notify-types.module';
+import { ChesModule } from './ches/ches.module';
 import { HealthModule } from './health/health.module';
-import { NotificationsModule } from './notifications/notifications.module';
+import { NotifyModule } from './notify/notify.module';
 import configuration from './config/configuration';
 
 const config = configuration();
@@ -28,11 +31,14 @@ const config = configuration();
       defaultTemplateEngine: config.gcNotify?.defaultTemplateEngine ?? 'jinja2',
     }),
     HealthModule,
-    NotificationsModule,
+    NotifyModule,
     GcNotifyModule.forRoot({}),
     GcNotifyApiModule,
     TemplatesModule,
-    SendersModule,
+    IdentitiesModule,
+    DefaultsModule,
+    NotifyTypesModule,
+    ChesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -49,8 +49,8 @@ const demoEmail = process.env.DEMO_EMAIL || '';
 const demoSenderEmail = process.env.DEMO_SENDER_EMAIL || '';
 const demoSubject = process.env.DEMO_SUBJECT || 'Hello';
 
-const gcNotify = (path: string) => `${baseUrl}/gc-notify/v2${path}`;
-const v1 = (path: string) => `${baseUrl}/v1${path}`;
+const apiV1 = (path: string) => `${baseUrl}/api/v1${path}`;
+const gcNotify = (path: string) => `${baseUrl}/api/v1/gcnotify${path}`;
 
 function authHeaders(): Record<string, string> {
   if (!apiKey) return {};
@@ -181,21 +181,21 @@ async function main(): Promise<void> {
   }
 
   const reference = `dual-demo-${Date.now()}`;
-  let sender: { id?: string; email_address?: string } | null = null;
+  let identity: { id?: string; emailAddress?: string } | null = null;
   let template: { id?: string; name?: string; subject?: string } | null = null;
   let chesSucceeded = false;
   let gcSucceeded = false;
 
   try {
-    // ─── Step 1: Create sender for CHES ─────────────────────────────────────
-    step(1, 'Create sender identity for CHES');
-    sub('POST /v1/senders');
+    // ─── Step 1: Create identity for CHES ─────────────────────────────────────
+    step(1, 'Create identity for CHES');
+    sub('POST /api/v1/identities');
     sub(
       'We register a verified CHES email address. Its UUID is used as email_reply_to_id.',
     );
 
     try {
-      const createSenderRes = await fetch(v1('/senders'), {
+      const createIdentityRes = await fetch(apiV1('/identities'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -203,21 +203,21 @@ async function main(): Promise<void> {
         },
         body: JSON.stringify({
           type: 'email',
-          email_address: senderEmail,
-          is_default: true,
+          emailAddress: senderEmail,
+          isDefault: true,
         }),
       });
 
-      if (createSenderRes.status !== 201) {
-        const body = await createSenderRes.text();
-        fail(`Request failed (${createSenderRes.status}): ${body}`);
+      if (createIdentityRes.status !== 201) {
+        const body = await createIdentityRes.text();
+        fail(`Request failed (${createIdentityRes.status}): ${body}`);
       } else {
-        sender = (await createSenderRes.json()) as {
+        identity = (await createIdentityRes.json()) as {
           id?: string;
-          email_address?: string;
+          emailAddress?: string;
         };
-        ok(`Sender created: ${sender.email_address} (id: ${sender.id})`);
-        json({ id: sender.id, email_address: sender.email_address });
+        ok(`Identity created: ${identity.emailAddress} (id: ${identity.id})`);
+        json({ id: identity.id, emailAddress: identity.emailAddress });
       }
     } catch (err) {
       fail(
@@ -228,13 +228,13 @@ async function main(): Promise<void> {
 
     // ─── Step 2: Create local template for CHES ──────────────────────────────
     step(2, 'Create Handlebars template for CHES');
-    sub('POST /v1/templates');
+    sub('POST /api/v1/templates');
     sub(
       'We create a local template with the same content as GC Notify. CHES will use this.',
     );
 
     try {
-      const createTemplateRes = await fetch(v1('/templates'), {
+      const createTemplateRes = await fetch(apiV1('/templates'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -282,13 +282,13 @@ async function main(): Promise<void> {
 
     // ─── Step 3: Send via CHES ──────────────────────────────────────────────
     step(3, 'Send email via CHES transport');
-    sub('POST /gc-notify/v2/notifications/email');
+    sub('POST /api/v1/gcnotify/notifications/email');
     sub('Header: X-Delivery-Email-Adapter: ches');
     sub(
       'Backend uses sender UUID (email_reply_to_id), local template, sends via CHES API.',
     );
 
-    if (sender?.id && template?.id) {
+    if (identity?.id && template?.id) {
       try {
         const chesRes = await fetch(gcNotify('/notifications/email'), {
           method: 'POST',
@@ -302,7 +302,7 @@ async function main(): Promise<void> {
             template_id: template.id,
             personalisation: { name, subject, channel: 'gc-notify-ches' },
             reference: `${reference}-ches`,
-            email_reply_to_id: sender.id,
+            email_reply_to_id: identity.id,
           }),
         });
 
@@ -334,14 +334,16 @@ async function main(): Promise<void> {
         );
       }
     } else {
-      fail('Skipped: sender and template required (from steps 1–2).');
+      fail('Skipped: identity and template required (from steps 1–2).');
     }
     divider();
 
     // ─── Step 4: Send via GC Notify (passthrough) ──────────────────────────────
     step(4, 'Send email via GC Notify (passthrough)');
-    sub('POST /gc-notify/v2/notifications/email');
-    sub('Headers: X-Delivery-Email-Adapter: gc-notify:passthrough, X-GC-Notify-Api-Key');
+    sub('POST /api/v1/gcnotify/notifications/email');
+    sub(
+      'Headers: X-Delivery-Email-Adapter: gc-notify:passthrough, X-GC-Notify-Api-Key',
+    );
     sub(
       'Backend forwards to real api.notification.canada.ca. Template must exist there.',
     );
@@ -359,7 +361,11 @@ async function main(): Promise<void> {
           body: JSON.stringify({
             email_address: email,
             template_id: templateId,
-            personalisation: { name, subject, channel: 'gc-notify-passthrough' },
+            personalisation: {
+              name,
+              subject,
+              channel: 'gc-notify-passthrough',
+            },
             reference: `${reference}-gc-notify`,
           }),
         });
@@ -435,7 +441,7 @@ async function main(): Promise<void> {
       console.log(`${C.red}${C.bold}No sends succeeded.${C.reset}\n`);
     }
     console.log(`${C.dim}What we achieved:${C.reset}`);
-    console.log(`  • Sender: ${sender ? 'created' : 'failed/skipped'}`);
+    console.log(`  • Identity: ${identity ? 'created' : 'failed/skipped'}`);
     console.log(`  • Template: ${template ? 'created' : 'failed/skipped'}`);
     console.log(`  • CHES send: ${chesSucceeded ? 'ok' : 'failed/skipped'}`);
     console.log(

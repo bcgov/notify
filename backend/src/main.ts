@@ -19,32 +19,36 @@ async function bootstrap() {
     }),
   );
 
-  // CORS for API Gateway
+  app.setGlobalPrefix('api/v1');
   app.enableCors();
 
-  // Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle('BC Notify API')
-    .setDescription('Notification service for BC Government teams')
+    .setTitle('Unified Notify API')
+    .setDescription(
+      'Unified notification API providing provider-agnostic /notify interface, plus CHES and GC Notify extensions.',
+    )
     .setVersion('1.0.0')
+    .addServer('/api/v1', 'Default server')
     .addApiKey(
       { type: 'apiKey', name: 'Authorization', in: 'header' },
       'api-key',
     )
     .addTag('Health', 'Health check endpoints')
+    .addTag('CHES', 'Common Hosted Email Service passthrough API')
+    .addTag('Notify', 'Unified notification send and track')
+    .addTag('Identities', 'Identity management (email, SMS sender)')
     .addTag(
       'GC Notify',
-      'GC Notify API replica - notifications, templates, bulk.',
-    )
-    .addTag('Notifications', 'Send and track notifications')
-    .addTag(
-      'Senders',
-      'Sender identity management (email reply-to, SMS sender)',
+      'GC Notify API replica - notifications, templates, bulk',
     )
     .addTag('Templates', 'Template management for notifications')
+    .addTag('Defaults', 'Tenant defaults')
+    .addTag('NotifyTypes', 'Notify type defaults profiles')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    ignoreGlobalPrefix: true,
+  });
   SwaggerModule.setup('api/docs', app, document);
 
   const port = process.env.PORT || 3000;
