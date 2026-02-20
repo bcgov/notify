@@ -32,7 +32,7 @@ jobs:
       environment: dev
       db_user: appproxy
       tag: ${{ inputs.tag }}
-      params: --set frontend.enabled=false --set crunchy.enabled=false
+      params: --set frontend.enabled=false --set crunchy.enabled=false --set backend.migrations.enabled=false --set global.secrets.enabled=false --set global.secrets.persist=false
 
   tests:
     name: Tests
@@ -41,6 +41,7 @@ jobs:
     with:
       target: dev
 
+  ###Deactivated deploy to test###
   deploy-test:
     name: Deploy (TEST)
     needs: [tests]
@@ -50,7 +51,7 @@ jobs:
       environment: test
       db_user: appproxy
       tag: ${{ inputs.tag }}
-      params: --set frontend.enabled=false --set crunchy.enabled=false
+      params: --set frontend.enabled=false --set crunchy.enabled=false --set backend.migrations.enabled=false --set global.secrets.enabled=false --set global.secrets.persist=false
 
   # deploy-prod:
   #   name: Deploy (PROD)
