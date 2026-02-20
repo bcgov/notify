@@ -22,7 +22,7 @@ import {
   NotifyType,
   CreateNotifyTypeRequest,
   UpdateNotifyTypeRequest,
-} from '../../schemas';
+} from './schemas';
 
 @ApiTags('NotifyTypes')
 @ApiSecurity('api-key')

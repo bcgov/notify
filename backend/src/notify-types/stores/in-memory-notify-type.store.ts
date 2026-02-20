@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { NotifyType } from '../schemas/notify-type';
+import type { NotifyType } from '../v1/core/schemas/notify-type';
 
 @Injectable()
 export class InMemoryNotifyTypeStore {

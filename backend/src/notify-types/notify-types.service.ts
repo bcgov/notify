@@ -10,7 +10,7 @@ import type {
   NotifyType,
   CreateNotifyTypeRequest,
   UpdateNotifyTypeRequest,
-} from './schemas';
+} from './v1/core/schemas';
 
 @Injectable()
 export class NotifyTypesService {

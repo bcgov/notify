@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DefaultsController } from './defaults.controller';
+import { DefaultsController } from './v1/core/defaults.controller';
 import { DefaultsService } from './defaults.service';
 import { InMemoryDefaultsStore } from './stores/in-memory-defaults.store';
 
