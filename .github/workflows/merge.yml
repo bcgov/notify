@@ -41,17 +41,23 @@ jobs:
     with:
       target: dev
 
-  ###Deactivated deploy to test###
+  # Deploy to test after successful dev deployment
   deploy-test:
     name: Deploy (TEST)
-    needs: [tests]
+    needs: [deploy-dev]
     uses: ./.github/workflows/.deployer.yml
     secrets: inherit
     with:
       environment: test
       db_user: appproxy
+      atomic: true
       tag: ${{ inputs.tag }}
-      params: --set frontend.enabled=false --set crunchy.enabled=false --set backend.migrations.enabled=false --set global.secrets.enabled=false --set global.secrets.persist=false
+      params: >-
+        --set frontend.enabled=false
+        --set crunchy.enabled=false
+        --set backend.migrations.enabled=false
+        --set global.secrets.enabled=false
+        --set global.secrets.persist=false
 
   # deploy-prod:
   #   name: Deploy (PROD)
