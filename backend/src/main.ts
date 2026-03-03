@@ -60,7 +60,7 @@ async function bootstrap() {
   const templateEngine =
     configService.get<string>('gcNotify.defaultTemplateEngine') ?? 'jinja2';
 
-  logger.log(`BC Notify API listening on port ${port}`);
+  logger.log(`BC Notify API running on port ${port}`);
   logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
   logger.log(
     `Adapters: email=${emailAdapter}, sms=${smsAdapter}, template=${templateEngine}`,
