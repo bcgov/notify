@@ -9,11 +9,22 @@ import { ConfigService } from '@nestjs/config';
 import { ChesOAuthService } from './ches-oauth.service';
 import { ChesMessageObject } from './v1/core/schemas/ches-message-object';
 import { ChesTransactionResponse } from './v1/core/schemas/ches-transaction-response';
+import { ChesMergeRequest } from './v1/core/schemas/ches-merge-request';
+import { ChesStatusObject } from './v1/core/schemas/ches-status-object';
+
+export { ChesMergeRequest, ChesStatusObject };
 
 interface ChesErrorResponse {
   detail?: string;
   message?: string;
   errors?: Array<{ message: string }>;
+}
+
+export interface ChesStatusQuery {
+  msgId?: string;
+  status?: string;
+  tag?: string;
+  txId?: string;
 }
 
 @Injectable()
@@ -109,8 +120,86 @@ export class ChesApiClient {
     return (await response.json()) as T;
   }
 
+  private buildQuery(params: ChesStatusQuery): string {
+    const qs = new URLSearchParams();
+    for (const [key, val] of Object.entries(params) as [
+      string,
+      string | undefined,
+    ][]) {
+      if (val !== undefined) qs.append(key, val);
+    }
+    const s = qs.toString();
+    return s ? `?${s}` : '';
+  }
+
   async sendEmail(body: ChesMessageObject): Promise<ChesTransactionResponse> {
     const token = await this.chesOAuthService.getValidToken();
     return this.request<ChesTransactionResponse>('POST', '/email', token, body);
+  }
+
+  async sendEmailMerge(
+    body: ChesMergeRequest,
+  ): Promise<ChesTransactionResponse[]> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<ChesTransactionResponse[]>(
+      'POST',
+      '/emailMerge',
+      token,
+      body,
+    );
+  }
+
+  async previewEmailMerge(
+    body: ChesMergeRequest,
+  ): Promise<ChesMessageObject[]> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<ChesMessageObject[]>(
+      'POST',
+      '/emailMerge/preview',
+      token,
+      body,
+    );
+  }
+
+  async getStatusQuery(query: ChesStatusQuery): Promise<ChesStatusObject[]> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<ChesStatusObject[]>(
+      'GET',
+      `/status${this.buildQuery(query)}`,
+      token,
+    );
+  }
+
+  async getStatusMessage(msgId: string): Promise<ChesStatusObject> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<ChesStatusObject>('GET', `/status/${msgId}`, token);
+  }
+
+  async promoteQuery(query: ChesStatusQuery): Promise<void> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<void>(
+      'POST',
+      `/promote${this.buildQuery(query)}`,
+      token,
+    );
+  }
+
+  async promoteMessage(msgId: string): Promise<void> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<void>('POST', `/promote/${msgId}`, token);
+  }
+
+  async cancelQuery(query: ChesStatusQuery): Promise<void> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<void>(
+      'DELETE',
+      `/cancel${this.buildQuery(query)}`,
+      token,
+    );
+  }
+
+  async cancelMessage(msgId: string): Promise<void> {
+    const token = await this.chesOAuthService.getValidToken();
+    return this.request<void>('DELETE', `/cancel/${msgId}`, token);
   }
 }
