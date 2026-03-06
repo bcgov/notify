@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  UseGuards,
+  Body,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -6,22 +15,40 @@ import {
   ApiSecurity,
   ApiQuery,
   ApiParam,
+  ApiBody,
 } from '@nestjs/swagger';
 import { NotImplementedException } from '@nestjs/common';
 import { ApiKeyGuard } from '../../../common/guards';
+import { ChesApiClient } from '../../ches-api.client';
+import { ChesMessageObject } from './schemas/ches-message-object';
+import { ChesTransactionResponse } from './schemas/ches-transaction-response';
 
 @ApiTags('CHES')
 @ApiSecurity('api-key')
 @UseGuards(ApiKeyGuard)
 @Controller('ches')
 export class ChesController {
+  constructor(private readonly chesApiClient: ChesApiClient) {}
+
   @Post('email')
-  @ApiOperation({ summary: 'Send an email (TODO)' })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  postEmail(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES email send - POST /ches/email',
-    );
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Send an email' })
+  @ApiBody({ type: ChesMessageObject, description: 'Email message details' })
+  @ApiResponse({
+    status: 201,
+    description: 'Email message queued successfully',
+    type: ChesTransactionResponse,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 422,
+    description: 'Unprocessable entity - validation error',
+  })
+  async postEmail(
+    @Body() body: ChesMessageObject,
+  ): Promise<ChesTransactionResponse> {
+    return this.chesApiClient.sendEmail(body);
   }
 
   @Post('emailMerge')
