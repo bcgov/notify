@@ -2,6 +2,7 @@ name: PR
 
 on:
   pull_request:
+  pull_request_target:
 
 concurrency:
   # Cancel in progress for PR open and close
@@ -13,6 +14,9 @@ permissions: {}
 jobs:
   builds:
     name: Builds
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository)
     permissions:
       packages: write
     runs-on: ubuntu-24.04
@@ -22,6 +26,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -66,7 +72,10 @@ jobs:
   results:
     name: PR Results
     needs: [builds, deploys, tests]
-    if: always()
+    if: >-
+      always() &&
+      ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) ||
+       (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name != github.repository))
     runs-on: ubuntu-24.04
     steps:
       - if: contains(needs.*.result, 'failure')||contains(needs.*.result, 'canceled')
