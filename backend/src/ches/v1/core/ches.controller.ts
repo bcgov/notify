@@ -7,6 +7,8 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  Param,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,11 +19,13 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { NotImplementedException } from '@nestjs/common';
 import { ApiKeyGuard } from '../../../common/guards';
 import { ChesApiClient } from '../../ches-api.client';
+import type { ChesStatusQuery } from '../../ches-api.client';
 import { ChesMessageObject } from './schemas/ches-message-object';
 import { ChesTransactionResponse } from './schemas/ches-transaction-response';
+import { ChesMergeRequest } from './schemas/ches-merge-request';
+import { ChesStatusObject } from './schemas/ches-status-object';
 
 @ApiTags('CHES')
 @ApiSecurity('api-key')
@@ -52,27 +56,40 @@ export class ChesController {
   }
 
   @Post('emailMerge')
-  @ApiOperation({ summary: 'Template mail merge and email sending (TODO)' })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  postMerge(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES email merge - POST /ches/emailMerge',
-    );
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Template mail merge and email sending' })
+  @ApiBody({ type: ChesMergeRequest, description: 'Merge request details' })
+  @ApiResponse({
+    status: 201,
+    description: 'Merge emails queued successfully',
+    type: [ChesTransactionResponse],
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async postMerge(
+    @Body() body: ChesMergeRequest,
+  ): Promise<ChesTransactionResponse[]> {
+    return this.chesApiClient.sendEmailMerge(body);
   }
 
   @Post('emailMerge/preview')
-  @ApiOperation({
-    summary: 'Template mail merge validation and preview (TODO)',
+  @ApiOperation({ summary: 'Template mail merge validation and preview' })
+  @ApiBody({ type: ChesMergeRequest, description: 'Merge request details' })
+  @ApiResponse({
+    status: 200,
+    description: 'Preview of merged messages',
+    type: [ChesMessageObject],
   })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  postPreview(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES email merge preview - POST /ches/emailMerge/preview',
-    );
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async postPreview(
+    @Body() body: ChesMergeRequest,
+  ): Promise<ChesMessageObject[]> {
+    return this.chesApiClient.previewEmailMerge(body);
   }
 
   @Get('status')
-  @ApiOperation({ summary: 'Query CHES message status (TODO)' })
+  @ApiOperation({ summary: 'Query CHES message status' })
   @ApiQuery({ name: 'msgId', required: false })
   @ApiQuery({
     name: 'status',
@@ -81,57 +98,84 @@ export class ChesController {
   })
   @ApiQuery({ name: 'tag', required: false })
   @ApiQuery({ name: 'txId', required: false })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  getStatusQuery(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES status query - GET /ches/status',
-    );
+  @ApiResponse({
+    status: 200,
+    description: 'List of message statuses',
+    type: [ChesStatusObject],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getStatusQuery(
+    @Query() query: ChesStatusQuery,
+  ): Promise<ChesStatusObject[]> {
+    return this.chesApiClient.getStatusQuery(query);
   }
 
   @Get('status/:msgId')
-  @ApiOperation({ summary: 'Get CHES message status (TODO)' })
-  @ApiParam({ name: 'msgId' })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  getStatusMessage(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES message status - GET /ches/status/:msgId',
-    );
+  @ApiOperation({ summary: 'Get CHES message status' })
+  @ApiParam({ name: 'msgId', description: 'Message UUID' })
+  @ApiResponse({ status: 200, description: 'Message status', type: ChesStatusObject })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
+  async getStatusMessage(
+    @Param('msgId') msgId: string,
+  ): Promise<ChesStatusObject> {
+    return this.chesApiClient.getStatusMessage(msgId);
   }
 
   @Post('promote')
-  @ApiOperation({ summary: 'Promote CHES messages (TODO)' })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  postPromoteQuery(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES promote - POST /ches/promote',
-    );
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Promote CHES messages' })
+  @ApiQuery({ name: 'msgId', required: false })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['accepted', 'cancelled', 'completed', 'failed', 'pending'],
+  })
+  @ApiQuery({ name: 'tag', required: false })
+  @ApiQuery({ name: 'txId', required: false })
+  @ApiResponse({ status: 202, description: 'Messages promoted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async postPromoteQuery(@Query() query: ChesStatusQuery): Promise<void> {
+    return this.chesApiClient.promoteQuery(query);
   }
 
   @Post('promote/:msgId')
-  @ApiOperation({ summary: 'Promote a single CHES message (TODO)' })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  postPromoteMessage(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES promote message - POST /ches/promote/:msgId',
-    );
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Promote a single CHES message' })
+  @ApiParam({ name: 'msgId', description: 'Message UUID' })
+  @ApiResponse({ status: 202, description: 'Message promoted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
+  async postPromoteMessage(@Param('msgId') msgId: string): Promise<void> {
+    return this.chesApiClient.promoteMessage(msgId);
   }
 
   @Delete('cancel')
-  @ApiOperation({ summary: 'Cancel CHES messages (TODO)' })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  deleteCancelQuery(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES cancel - DELETE /ches/cancel',
-    );
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Cancel CHES messages' })
+  @ApiQuery({ name: 'msgId', required: false })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['accepted', 'cancelled', 'completed', 'failed', 'pending'],
+  })
+  @ApiQuery({ name: 'tag', required: false })
+  @ApiQuery({ name: 'txId', required: false })
+  @ApiResponse({ status: 202, description: 'Messages cancelled' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async deleteCancelQuery(@Query() query: ChesStatusQuery): Promise<void> {
+    return this.chesApiClient.cancelQuery(query);
   }
 
   @Delete('cancel/:msgId')
-  @ApiOperation({ summary: 'Cancel a single CHES message (TODO)' })
-  @ApiResponse({ status: 501, description: 'Not implemented' })
-  deleteCancelMessage(): never {
-    throw new NotImplementedException(
-      'TODO: Implement CHES cancel message - DELETE /ches/cancel/:msgId',
-    );
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Cancel a single CHES message' })
+  @ApiParam({ name: 'msgId', description: 'Message UUID' })
+  @ApiResponse({ status: 202, description: 'Message cancelled' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Message not found' })
+  async deleteCancelMessage(@Param('msgId') msgId: string): Promise<void> {
+    return this.chesApiClient.cancelMessage(msgId);
   }
 
   @Get('health')
