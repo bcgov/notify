@@ -2,7 +2,7 @@
 set -e
 
 echo "══════════════════════════════════════════════════════════════"
-echo "  Starting sidecar services (mailpit, postgres) — DinD"
+echo "  Starting sidecar services (mailpit, postgres, kong) — DinD"
 echo "══════════════════════════════════════════════════════════════"
 
 cd /workspace
@@ -16,5 +16,5 @@ docker compose -f .devcontainer/docker-compose.yml up -d
 # Copy .env.example to backend/.env for running against devcontainer
 cp backend/.env.example backend/.env
 
-echo "  Sidecar services ready (localhost:1025, localhost:5432, localhost:8025)."
+echo "  Sidecar services ready (localhost:1025, localhost:5432, localhost:8025, localhost:8000 Kong)."
 echo "══════════════════════════════════════════════════════════════"

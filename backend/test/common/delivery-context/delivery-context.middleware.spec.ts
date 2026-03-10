@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { PrincipalResolver } from '../../../src/common/auth/principal-resolver.service';
 import { DeliveryContextMiddleware } from '../../../src/common/delivery-context/delivery-context.middleware';
 import { DeliveryContextStorage } from '../../../src/common/delivery-context/delivery-context.storage';
 import type { Request, Response } from 'express';
@@ -21,6 +22,10 @@ describe('DeliveryContextMiddleware', () => {
       providers: [
         DeliveryContextMiddleware,
         { provide: ConfigService, useValue: { get: configGetMock } },
+        {
+          provide: PrincipalResolver,
+          useValue: { resolveOptional: jest.fn().mockReturnValue(null) },
+        },
         DeliveryContextStorage,
       ],
     }).compile();

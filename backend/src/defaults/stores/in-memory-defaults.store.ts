@@ -1,24 +1,25 @@
 import { Injectable } from '@nestjs/common';
+import type { DefaultsStore } from './defaults-store.interface';
 import type { TenantDefaults } from '../v1/core/schemas/tenant-defaults';
 
-const DEFAULT_TENANT = 'default';
+const DEFAULT_WORKSPACE = 'default';
 
 @Injectable()
-export class InMemoryDefaultsStore {
+export class InMemoryDefaultsStore implements DefaultsStore {
   private readonly store = new Map<string, TenantDefaults>();
 
-  get(tenantId: string = DEFAULT_TENANT): TenantDefaults {
-    return this.store.get(tenantId) ?? {};
+  get(workspaceId: string = DEFAULT_WORKSPACE): TenantDefaults {
+    return this.store.get(workspaceId) ?? {};
   }
 
-  set(tenantId: string, defaults: TenantDefaults): void {
-    this.store.set(tenantId, defaults);
+  set(workspaceId: string, defaults: TenantDefaults): void {
+    this.store.set(workspaceId, defaults);
   }
 
-  merge(tenantId: string, partial: Partial<TenantDefaults>): TenantDefaults {
-    const existing = this.get(tenantId);
+  merge(workspaceId: string, partial: Partial<TenantDefaults>): TenantDefaults {
+    const existing = this.get(workspaceId);
     const merged = { ...existing, ...partial };
-    this.set(tenantId, merged);
+    this.set(workspaceId, merged);
     return merged;
   }
 }

@@ -29,7 +29,7 @@ Env files:
 Override via env vars:
 
 ```bash
-E2E_BASE_URL=https://notify.example.com E2E_API_KEY=xxx npm run test:e2e:integration
+E2E_BASE_URL=https://notify.example.com E2E_GC_NOTIFY_API_KEY=xxx npm run test:e2e:integration
 E2E_LOCAL_ENV_FILE=path/to/.env.local npm run test:e2e:integration
 ```
 
@@ -38,7 +38,7 @@ E2E_LOCAL_ENV_FILE=path/to/.env.local npm run test:e2e:integration
 | Variable | Description |
 |----------|-------------|
 | `E2E_BASE_URL` | API base URL (default: `http://localhost:3000`) |
-| `E2E_API_KEY` | API key for protected endpoints |
+| `E2E_GC_NOTIFY_API_KEY` | GC Notify-style API key for protected endpoints |
 | `E2E_MAILPIT_URL` | Mailpit API URL (optional; enables Mailpit delivery validation when set) |
 | `E2E_LOCAL_ENV_FILE` | Override path to local overrides file (default: `backend/.env.local`) |
 | `E2E_SKIP_DELIVERY_VALIDATION` | Set to `true` to skip delivery validation (use for staging with real SMTP) |

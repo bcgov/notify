@@ -27,15 +27,15 @@ const localFile =
 config({ path: localFile, quiet: true });
 
 const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
-const apiKey = process.env.E2E_API_KEY || process.env.API_KEY || '';
+const authApiKey = process.env.E2E_GC_NOTIFY_API_KEY || '';
 const mailpitUrl = process.env.E2E_MAILPIT_URL;
 
 const apiV1 = (path: string) => `${baseUrl}/api/v1${path}`;
 const gcNotify = (path: string) => `${baseUrl}/api/v1/gcnotify${path}`;
 
 function authHeaders(): Record<string, string> {
-  if (!apiKey) return {};
-  return { Authorization: `ApiKey-v1 ${apiKey}` };
+  if (!authApiKey) return {};
+  return { Authorization: `ApiKey-v1 ${authApiKey}` };
 }
 
 // ─── Pretty printing ───────────────────────────────────────────────────────
@@ -134,9 +134,9 @@ async function main(): Promise<void> {
     `${C.dim}Mailpit: ${mailpitUrl || '(not configured)'}${C.reset}\n`,
   );
 
-  if (!apiKey) {
+  if (!authApiKey) {
     fail(
-      'E2E_API_KEY (or API_KEY) is required. Set it in test/e2e/env.local or backend/.env.local.',
+      'E2E_GC_NOTIFY_API_KEY is required. Set it in test/e2e/env.local or backend/.env.local.',
     );
     process.exit(1);
   }

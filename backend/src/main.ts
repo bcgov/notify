@@ -44,6 +44,7 @@ async function bootstrap() {
     .addTag('Templates', 'Template management for notifications')
     .addTag('Defaults', 'Tenant defaults')
     .addTag('NotifyTypes', 'Notify type defaults profiles')
+    .addTag('Context', 'Current request principal (for demos and debugging)')
     .build();
 
   const document = SwaggerModule.createDocument(app, config, {
