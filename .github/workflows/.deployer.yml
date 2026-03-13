@@ -85,7 +85,7 @@ on:
       oc_token:
         description: OpenShift token
         required: true
-      api_key:
+      API_KEY:
         description: API key for backend authentication
         required: false
 
@@ -186,7 +186,7 @@ jobs:
               --set-string global.tag="${{ steps.vars.outputs.tag }}" \
               --set-string global.config.databaseUser="${{ inputs.db_user }}" \
               --set-string global.databaseAlias="${{ steps.deploy_crunchy.outputs.release && format('{0}-crunchy', steps.deploy_crunchy.outputs.release) || '' }}" \
-              ${{ secrets.api_key && format('--set-string backend.apiKey={0}', secrets.api_key) || '' }} \
+              ${{ secrets.API_KEY && format('--set-string backend.apiKey={0}', secrets.API_KEY) || '' }} \
               ${{ inputs.params }} \
               --install --wait ${{ inputs.atomic && '--atomic' || '' }} ${{ steps.vars.outputs.release }} \
               --timeout ${{ inputs.timeout-minutes }}m \
