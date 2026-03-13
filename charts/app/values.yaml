@@ -77,6 +77,8 @@ backend:
   pdb:
     enabled: false # enable it in PRODUCTION for having pod disruption budget.
     minAvailable: 1 # the minimum number of pods that must be available during the disruption budget.
+  #-- API key for backend authentication. Injected via GitHub Actions secret at deploy time. Never commit a real value here.
+  apiKey: ""
 
 frontend:
   # -- enable or disable a component deployment.
