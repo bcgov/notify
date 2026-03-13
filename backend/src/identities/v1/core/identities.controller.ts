@@ -19,7 +19,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { IdentitiesService } from '../../identities.service';
-import { ApiKeyGuard } from '../../../common/guards';
+import { AuthenticatedGuard } from '../../../common/guards';
 import {
   Identity,
   CreateIdentityRequest,
@@ -29,7 +29,7 @@ import {
 
 @ApiTags('Identities')
 @ApiSecurity('api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('identities')
 export class IdentitiesController {
   constructor(private readonly identitiesService: IdentitiesService) {}

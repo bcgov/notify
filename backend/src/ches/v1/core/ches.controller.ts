@@ -19,7 +19,7 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../../../common/guards';
+import { AuthenticatedGuard } from '../../../common/guards';
 import { ChesApiClient } from '../../ches-api.client';
 import type { ChesStatusQuery } from '../../ches-api.client';
 import { ChesMessageObject } from './schemas/ches-message-object';
@@ -29,7 +29,7 @@ import { ChesStatusObject } from './schemas/ches-status-object';
 
 @ApiTags('CHES')
 @ApiSecurity('api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('ches')
 export class ChesController {
   constructor(private readonly chesApiClient: ChesApiClient) {}
@@ -113,7 +113,11 @@ export class ChesController {
   @Get('status/:msgId')
   @ApiOperation({ summary: 'Get CHES message status' })
   @ApiParam({ name: 'msgId', description: 'Message UUID' })
-  @ApiResponse({ status: 200, description: 'Message status', type: ChesStatusObject })
+  @ApiResponse({
+    status: 200,
+    description: 'Message status',
+    type: ChesStatusObject,
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Message not found' })
   async getStatusMessage(

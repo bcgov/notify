@@ -18,11 +18,11 @@ import {
 import { NotImplementedException } from '@nestjs/common';
 import { NotifyService } from '../../notify.service';
 import { NotifyRequest, NotifyResponse } from './schemas';
-import { ApiKeyGuard } from '../../../common/guards';
+import { AuthenticatedGuard } from '../../../common/guards';
 
 @ApiTags('Notify')
 @ApiSecurity('api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('notify')
 export class NotifyController {
   constructor(private readonly notifyService: NotifyService) {}

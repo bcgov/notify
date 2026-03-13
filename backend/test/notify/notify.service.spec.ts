@@ -10,6 +10,7 @@ import { DeliveryContextService } from '../../src/common/delivery-context/delive
 import { IdentitiesService } from '../../src/identities/identities.service';
 import { NotifyTypesService } from '../../src/notify-types/notify-types.service';
 import { DefaultsService } from '../../src/defaults/defaults.service';
+import { DEFAULTS_STORE } from '../../src/defaults/defaults.tokens';
 import { InMemoryTemplateStore } from '../../src/adapters/implementations/storage/in-memory/in-memory-template.store';
 import { InMemoryTemplateResolver } from '../../src/adapters/implementations/template/resolver/in-memory/in-memory-template.resolver';
 import { HandlebarsTemplateRenderer } from '../../src/adapters/implementations/template/renderer/handlebars/handlebars-template.renderer';
@@ -83,7 +84,10 @@ describe('NotifyService', () => {
     );
 
     const deliveryAdapterResolver = { getEmailAdapter: () => emailTransport };
-    const deliveryContextService = { getEmailAdapterKey: () => 'nodemailer' };
+    const deliveryContextService = {
+      getEmailAdapterKey: () => 'nodemailer',
+      getWorkspaceId: () => 'default',
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -95,6 +99,10 @@ describe('NotifyService', () => {
         InMemoryTemplateResolver,
         InMemoryDefaultsStore,
         InMemoryNotifyTypeStore,
+        {
+          provide: DEFAULTS_STORE,
+          useExisting: InMemoryDefaultsStore,
+        },
         { provide: ConfigService, useValue: { get: configGetMock } },
         { provide: DeliveryAdapterResolver, useValue: deliveryAdapterResolver },
         { provide: DeliveryContextService, useValue: deliveryContextService },
@@ -246,13 +254,20 @@ describe('NotifyService', () => {
         InMemoryDefaultsStore,
         InMemoryNotifyTypeStore,
         {
+          provide: DEFAULTS_STORE,
+          useExisting: InMemoryDefaultsStore,
+        },
+        {
           provide: ConfigService,
           useValue: { get: jest.fn(() => 'Notification') },
         },
         { provide: DeliveryAdapterResolver, useValue: deliveryAdapterResolver },
         {
           provide: DeliveryContextService,
-          useValue: { getEmailAdapterKey: () => 'gc-notify:passthrough' },
+          useValue: {
+            getEmailAdapterKey: () => 'gc-notify:passthrough',
+            getWorkspaceId: () => 'default',
+          },
         },
         { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
         { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },

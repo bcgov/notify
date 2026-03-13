@@ -22,6 +22,6 @@ import { DeliveryAdapterResolver } from './delivery-adapter.resolver';
 })
 export class DeliveryContextModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(DeliveryContextMiddleware).forRoutes('*');
+    consumer.apply(DeliveryContextMiddleware).forRoutes('*path');
   }
 }

@@ -1,6 +1,8 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
+import { PrincipalResolver } from '../auth/principal-resolver.service';
+import type { AuthenticatedRequest, RequestPrincipal } from '../auth/types';
 import type { DeliveryContext } from './delivery-context.interface';
 import { DeliveryContextStorage } from './delivery-context.storage';
 
@@ -8,11 +10,12 @@ import { DeliveryContextStorage } from './delivery-context.storage';
 export class DeliveryContextMiddleware implements NestMiddleware {
   constructor(
     private readonly configService: ConfigService,
+    private readonly principalResolver: PrincipalResolver,
     private readonly storage: DeliveryContextStorage,
   ) {}
 
   use(req: Request, res: Response, next: NextFunction): void {
-    const ctx = this.resolveContext(req);
+    const ctx = this.resolveContext(req as AuthenticatedRequest);
     this.storage.run(ctx, () => next());
   }
 
@@ -27,9 +30,10 @@ export class DeliveryContextMiddleware implements NestMiddleware {
     'gc-notify:passthrough',
   ]);
 
-  private resolveContext(req: Request): DeliveryContext {
+  private resolveContext(req: AuthenticatedRequest): DeliveryContext {
     const headerEmail = this.getHeader(req, 'x-delivery-email-adapter');
     const headerSms = this.getHeader(req, 'x-delivery-sms-adapter');
+    const principal = this.resolvePrincipal(req);
 
     const emailAdapter =
       headerEmail && DeliveryContextMiddleware.VALID_EMAIL_KEYS.has(headerEmail)
@@ -48,7 +52,30 @@ export class DeliveryContextMiddleware implements NestMiddleware {
       smsAdapter,
       templateSource: 'local',
       templateEngine,
+      workspaceId: principal?.workspaceId,
+      workspaceKind: principal?.workspaceKind,
+      principalType: principal?.type,
+      principal,
     };
+  }
+
+  private resolvePrincipal(
+    req: AuthenticatedRequest,
+  ): RequestPrincipal | undefined {
+    try {
+      const principal =
+        this.principalResolver.resolveOptional(req) ?? undefined;
+      req.principal = principal;
+      req.authResolutionError = undefined;
+      return principal;
+    } catch (error) {
+      req.principal = undefined;
+      req.authResolutionError =
+        error instanceof Error
+          ? error
+          : new Error('Principal resolution failed');
+      return undefined;
+    }
   }
 
   private getHeader(req: Request, name: string): string | undefined {

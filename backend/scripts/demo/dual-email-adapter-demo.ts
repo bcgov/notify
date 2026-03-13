@@ -40,7 +40,7 @@ const localFile =
 config({ path: localFile, quiet: true });
 
 const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
-const apiKey = process.env.E2E_API_KEY || process.env.API_KEY || '';
+const authApiKey = process.env.E2E_GC_NOTIFY_API_KEY || '';
 const demoName = process.env.DEMO_NAME || '';
 const demoEmail = process.env.DEMO_EMAIL || '';
 const demoSenderEmail = process.env.DEMO_SENDER_EMAIL || '';
@@ -49,8 +49,8 @@ const demoSubject = process.env.DEMO_SUBJECT || 'Hello';
 const apiV1 = (path: string) => `${baseUrl}/api/v1${path}`;
 
 function authHeaders(): Record<string, string> {
-  if (!apiKey) return {};
-  return { Authorization: `ApiKey-v1 ${apiKey}` };
+  if (!authApiKey) return {};
+  return { Authorization: `ApiKey-v1 ${authApiKey}` };
 }
 
 // ─── Handlebars template ────────────────────────────────────────────────────
@@ -146,8 +146,8 @@ async function main(): Promise<void> {
     `${C.dim}Personalisation name: ${name || '(not set)'}${C.reset}\n`,
   );
 
-  if (!apiKey) {
-    warn('E2E_API_KEY (or API_KEY) not set. Requests may fail.');
+  if (!authApiKey) {
+    warn('E2E_GC_NOTIFY_API_KEY not set. Requests may fail.');
   }
   if (!name) {
     warn('DEMO_NAME (or --name) not set. Using placeholder.');
