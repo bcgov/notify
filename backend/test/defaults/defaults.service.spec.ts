@@ -1,13 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { DeliveryContextService } from '../../src/common/delivery-context/delivery-context.service';
 import { DefaultsService } from '../../src/defaults/defaults.service';
+import { DEFAULTS_STORE } from '../../src/defaults/defaults.tokens';
 import { InMemoryDefaultsStore } from '../../src/defaults/stores/in-memory-defaults.store';
 
 describe('DefaultsService', () => {
   let service: DefaultsService;
+  let currentWorkspaceId: string;
 
   beforeEach(async () => {
+    currentWorkspaceId = 'workspace-a';
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DefaultsService, InMemoryDefaultsStore],
+      providers: [
+        DefaultsService,
+        InMemoryDefaultsStore,
+        {
+          provide: DEFAULTS_STORE,
+          useExisting: InMemoryDefaultsStore,
+        },
+        {
+          provide: DeliveryContextService,
+          useValue: {
+            getWorkspaceId: () => currentWorkspaceId,
+          },
+        },
+      ],
     }).compile();
 
     service = module.get(DefaultsService);
@@ -42,5 +59,17 @@ describe('DefaultsService', () => {
 
     expect(result.emailAdapter).toBe('nodemailer');
     expect(result.renderer).toBe('handlebars');
+  });
+
+  it('stores defaults separately per workspace', () => {
+    service.updateDefaults({ renderer: 'jinja2' });
+
+    currentWorkspaceId = 'workspace-b';
+    service.updateDefaults({ renderer: 'handlebars' });
+
+    expect(service.getDefaults().renderer).toBe('handlebars');
+
+    currentWorkspaceId = 'workspace-a';
+    expect(service.getDefaults().renderer).toBe('jinja2');
   });
 });

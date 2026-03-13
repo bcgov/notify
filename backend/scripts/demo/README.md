@@ -56,6 +56,8 @@ npm run demo
 # or
 npm run demo:dual-transport
 npm run demo:dual-email-adapter
+npm run demo:gateway-transport
+npm run demo:kong-routes
 ```
 
 **4. Stop the container** when done:
@@ -102,11 +104,12 @@ Required env (or CLI args):
 
 | Variable               | CLI arg                 | Description                                      |
 | ---------------------- | ----------------------- | ------------------------------------------------ |
+| *(auth to backend)*    | —                       | `E2E_GC_NOTIFY_API_KEY` or `AUTH_GC_NOTIFY_API_KEY` (from `.env` / `.env.local` or `test/e2e/env.local`) |
 | `GC_NOTIFY_API_KEY`    | `--gc-notify-api-key`   | Your GC Notify API key (for passthrough)         |
 | `GC_NOTIFY_TEMPLATE_ID`| `--template-id`         | UUID of template in GC Notify (must exist there) |
 | `DEMO_NAME`            | `--name`                | Value for `{{name}}` personalisation             |
 | `DEMO_EMAIL`           | `--email`               | Recipient email address                           |
-| `DEMO_SENDER_EMAIL`    | `--sender-email`        | Verified CHES sender address (for email_reply_to_id) |
+| `DEMO_SENDER_EMAIL`    | `--sender-email`        | Verified CHES sender address (for email_reply_to_id); **required for Step 1** |
 | `DEMO_SUBJECT`        | `--subject`             | Value for {{subject}} (default: "Hello", mirrors GC Notify) |
 
 For CHES: backend must have `CHES_CLIENT_ID`, `CHES_CLIENT_SECRET`, `CHES_BASE_URL`, `CHES_TOKEN_URL` in `backend/.env.local`. The script creates a sender via the API and uses `email_reply_to_id` instead of `CHES_FROM`.
@@ -134,6 +137,58 @@ The template content (Handlebars) used for CHES and equivalent for GC Notify:
 - **Heading 2**: Personalised for you
 - **Paragraph**: Hello {{name}}
 
+## Gateway Transport Demo (gateway auth + CHES/GC Notify)
+
+Same flow as dual-transport but authenticates via **gateway service client**: the script sends the gateway client-id header (e.g. `x-consumer-custom-id`) instead of `Authorization: ApiKey-v1`. Use this when simulating API Gateway calling your backend with a trusted client id.
+
+**Backend must:**
+
+- Load workspace/service-client data from bootstrap JSON (e.g. `AUTH_BOOTSTRAP_PATH=config/workspace-auth.bootstrap.example.json` in `.env.local`).
+- Have `AUTH_STRATEGIES` include `gateway-service-client` and set `AUTH_GATEWAY_SERVICE_CLIENT_ID_HEADER` (e.g. `x-consumer-custom-id`).
+
+```bash
+npm run demo:gateway-transport
+```
+
+Required env (or CLI):
+
+| Variable                        | CLI arg                  | Description                                                                 |
+| ------------------------------- | ------------------------ | --------------------------------------------------------------------------- |
+| `DEMO_GATEWAY_CLIENT_ID`        | `--gateway-client-id`    | Service client id from bootstrap JSON (default: `LOCAL-JOHN-CLIENT`)      |
+| `DEMO_GATEWAY_CLIENT_ID_HEADER` | `--gateway-header`        | Header name (default: `x-consumer-custom-id`; or `AUTH_GATEWAY_SERVICE_CLIENT_ID_HEADER`) |
+| `DEMO_SENDER_EMAIL`             | `--sender-email`         | Verified CHES sender (Step 1)                                               |
+| `DEMO_EMAIL`                    | `--email`                | Recipient                                                                   |
+| `DEMO_NAME`, `DEMO_SUBJECT`     | `--name`, `--subject`    | Personalisation                                                             |
+| `GC_NOTIFY_API_KEY`, `GC_NOTIFY_TEMPLATE_ID` | —              | Optional; for Step 4 passthrough                                            |
+
+Example:
+
+```bash
+DEMO_SENDER_EMAIL=you@domain.gov.bc.ca DEMO_EMAIL=recipient@example.com npm run demo:gateway-transport
+```
+
+Or with CLI (client id must exist in `config/workspace-auth.bootstrap.example.json` or your bootstrap file):
+
+```bash
+npm run demo:gateway-transport -- --gateway-client-id LOCAL-JOHN-CLIENT --sender-email you@domain.gov.bc.ca --email recipient@example.com
+```
+
+## Kong Routes Demo (local gateway simulation)
+
+Calls the backend **through Kong** at `http://localhost:8000` so each path prefix (`/john`, `/sue`, `/`) is treated as a different client. Kong injects `x-consumer-custom-id` per route; the backend resolves workspace (john, sue, default) and returns tenant-scoped data. No auth header needed — Kong adds it.
+
+**Prerequisites:** Backend on port 3000, Kong sidecar on port 8000 (e.g. devcontainer sidecars), `AUTH_BOOTSTRAP_PATH` set to the workspace bootstrap JSON.
+
+```bash
+npm run demo:kong-routes
+```
+
+| Variable         | Description                          |
+| ---------------- | ------------------------------------ |
+| `KONG_BASE_URL`  | Kong proxy URL (default: `http://localhost:8000`) |
+
+The script hits `GET /api/v1/defaults` for each of the three routes and prints status and client id so you see John, Sue, and Default each acting as their workspace.
+
 ## Config
 
 Same variables as E2E tests. Base config from `test/e2e/env.local`; local overrides (credentials, adapter choice) from `backend/.env.local`.
@@ -141,6 +196,6 @@ Same variables as E2E tests. Base config from `test/e2e/env.local`; local overri
 | Variable              | Description                                             |
 | --------------------- | ------------------------------------------------------- |
 | `E2E_BASE_URL`        | API base URL (default: `http://localhost:3000`)         |
-| `E2E_API_KEY`         | API key for protected endpoints                         |
+| `E2E_GC_NOTIFY_API_KEY` | API key for protected endpoints (demo/e2e); demo also accepts `AUTH_GC_NOTIFY_API_KEY` |
 | `E2E_MAILPIT_URL`     | Mailpit API URL (optional; enables delivery validation) |
 | `DEMO_LOCAL_ENV_FILE` | Override path to local overrides file (default: `backend/.env.local`) |

@@ -1,0 +1,49 @@
+{
+  "workspaces": [
+    {
+      "id": "default",
+      "kind": "local",
+      "active": true
+    },
+    {
+      "id": "john",
+      "kind": "enterprise",
+      "active": true,
+      "externalSystem": "gateway",
+      "externalId": "john"
+    },
+    {
+      "id": "sue",
+      "kind": "enterprise",
+      "active": true,
+      "externalSystem": "gateway",
+      "externalId": "sue"
+    }
+  ],
+  "serviceClients": [
+    {
+      "id": "default-client",
+      "gatewayClientId": "LOCAL-DEFAULT-CLIENT",
+      "workspaceId": "default",
+      "active": true,
+      "source": "gateway",
+      "name": "Local Default Service Client"
+    },
+    {
+      "id": "john-client",
+      "gatewayClientId": "LOCAL-JOHN-CLIENT",
+      "workspaceId": "john",
+      "active": true,
+      "source": "gateway",
+      "name": "John Service Client"
+    },
+    {
+      "id": "sue-client",
+      "gatewayClientId": "LOCAL-SUE-CLIENT",
+      "workspaceId": "sue",
+      "active": true,
+      "source": "gateway",
+      "name": "Sue Service Client"
+    }
+  ]
+}

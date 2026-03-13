@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { RequestPrincipal } from '../auth/types';
 import { DeliveryContextStorage } from './delivery-context.storage';
 
 @Injectable()
@@ -19,6 +20,26 @@ export class DeliveryContextService {
 
   getTemplateEngine(): string {
     return this.getContext().templateEngine ?? 'jinja2';
+  }
+
+  getWorkspaceId(): string {
+    const workspaceId = this.getContext().workspaceId;
+    if (!workspaceId) {
+      throw new Error(
+        'Workspace is not set for the current request. Ensure authentication resolved a workspace before accessing tenant-scoped services.',
+      );
+    }
+    return workspaceId;
+  }
+
+  getPrincipal(): RequestPrincipal {
+    const principal = this.getContext().principal;
+    if (!principal) {
+      throw new Error(
+        'Principal is not set for the current request. Ensure authentication resolved a principal before accessing protected services.',
+      );
+    }
+    return principal;
   }
 
   private getContext() {

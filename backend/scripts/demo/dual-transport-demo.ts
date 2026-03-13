@@ -41,7 +41,8 @@ const localFile =
 config({ path: localFile, quiet: true });
 
 const baseUrl = process.env.E2E_BASE_URL || 'http://localhost:3000';
-const apiKey = process.env.E2E_API_KEY || process.env.API_KEY || '';
+const authApiKey =
+  process.env.E2E_GC_NOTIFY_API_KEY || process.env.AUTH_GC_NOTIFY_API_KEY || '';
 const gcNotifyApiKey = process.env.GC_NOTIFY_API_KEY || '';
 const gcNotifyTemplateId = process.env.GC_NOTIFY_TEMPLATE_ID || '';
 const demoName = process.env.DEMO_NAME || '';
@@ -53,8 +54,8 @@ const apiV1 = (path: string) => `${baseUrl}/api/v1${path}`;
 const gcNotify = (path: string) => `${baseUrl}/api/v1/gcnotify${path}`;
 
 function authHeaders(): Record<string, string> {
-  if (!apiKey) return {};
-  return { Authorization: `ApiKey-v1 ${apiKey}` };
+  if (!authApiKey) return {};
+  return { Authorization: `ApiKey-v1 ${authApiKey}` };
 }
 
 // ─── Handlebars template (matches GC Notify content) ────────────────────────
@@ -161,8 +162,10 @@ async function main(): Promise<void> {
     `${C.dim}GC Notify template ID: ${templateId || '(not set)'}${C.reset}\n`,
   );
 
-  if (!apiKey) {
-    warn('E2E_API_KEY (or API_KEY) not set. Requests may fail.');
+  if (!authApiKey) {
+    warn(
+      'E2E_GC_NOTIFY_API_KEY / AUTH_GC_NOTIFY_API_KEY not set. Requests may fail.',
+    );
   }
   if (!gcKey) {
     warn('GC_NOTIFY_API_KEY not set. Facade step will be skipped.');
@@ -194,37 +197,44 @@ async function main(): Promise<void> {
       'We register a verified CHES email address. Its UUID is used as email_reply_to_id.',
     );
 
-    try {
-      const createIdentityRes = await fetch(apiV1('/identities'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders(),
-        },
-        body: JSON.stringify({
-          type: 'email',
-          emailAddress: senderEmail,
-          isDefault: true,
-        }),
-      });
-
-      if (createIdentityRes.status !== 201) {
-        const body = await createIdentityRes.text();
-        fail(`Request failed (${createIdentityRes.status}): ${body}`);
-      } else {
-        identity = (await createIdentityRes.json()) as {
-          id?: string;
-          emailAddress?: string;
-        };
-        ok(`Identity created: ${identity.emailAddress} (id: ${identity.id})`);
-        json({ id: identity.id, emailAddress: identity.emailAddress });
-      }
-    } catch (err) {
+    if (!senderEmail) {
       fail(
-        `Unexpected error: ${err instanceof Error ? err.message : String(err)}`,
+        'Skipped: DEMO_SENDER_EMAIL (or --sender-email) required for identity creation.',
       );
+      divider();
+    } else {
+      try {
+        const createIdentityRes = await fetch(apiV1('/identities'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders(),
+          },
+          body: JSON.stringify({
+            type: 'email',
+            emailAddress: senderEmail,
+            isDefault: true,
+          }),
+        });
+
+        if (createIdentityRes.status !== 201) {
+          const body = await createIdentityRes.text();
+          fail(`Request failed (${createIdentityRes.status}): ${body}`);
+        } else {
+          identity = (await createIdentityRes.json()) as {
+            id?: string;
+            emailAddress?: string;
+          };
+          ok(`Identity created: ${identity.emailAddress} (id: ${identity.id})`);
+          json({ id: identity.id, emailAddress: identity.emailAddress });
+        }
+      } catch (err) {
+        fail(
+          `Unexpected error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      divider();
     }
-    divider();
 
     // ─── Step 2: Create local template for CHES ──────────────────────────────
     step(2, 'Create Handlebars template for CHES');

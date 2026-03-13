@@ -21,7 +21,7 @@ import {
 } from '@nestjs/swagger';
 import * as express from 'express';
 import { GcNotifyService } from '../../gc-notify.service';
-import { ApiKeyGuard } from '../../../common/guards';
+import { AuthenticatedGuard } from '../../../common/guards';
 import {
   CreateEmailNotificationRequest,
   CreateSmsNotificationRequest,
@@ -40,7 +40,7 @@ import {
 @ApiTags('GC Notify')
 @ApiExtraModels(EmailContent, SmsContent, FileAttachment)
 @ApiSecurity('api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('gcnotify')
 export class GcNotifyController {
   constructor(private readonly gcNotifyService: GcNotifyService) {}

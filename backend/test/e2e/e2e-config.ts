@@ -4,7 +4,7 @@
  */
 export const e2eConfig = {
   baseUrl: process.env.E2E_BASE_URL || 'http://localhost:3000',
-  apiKey: process.env.E2E_API_KEY || '',
+  gcNotifyApiKey: process.env.E2E_GC_NOTIFY_API_KEY || '',
   mailpitUrl: process.env.E2E_MAILPIT_URL,
   /** Skip delivery validation (use for staging with real SMTP). */
   skipDeliveryValidation:
@@ -24,10 +24,10 @@ export function shouldValidateDeliveryViaMailpit(): boolean {
 }
 
 export function authHeaders(): Record<string, string> {
-  if (!e2eConfig.apiKey) {
+  if (!e2eConfig.gcNotifyApiKey) {
     return {};
   }
   return {
-    Authorization: `ApiKey-v1 ${e2eConfig.apiKey}`,
+    Authorization: `ApiKey-v1 ${e2eConfig.gcNotifyApiKey}`,
   };
 }
