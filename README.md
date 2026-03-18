@@ -5,3 +5,4 @@ Connected services notifications orchestration, default notifications settings a
 - [Dev container setup](.devcontainer/README.md)
 - [Adapters (email/SMS)](backend/src/adapters/README.md)
 - [GC Notify](backend/src/gc-notify/README.md)
+- [Github Actions](.github/workflows/README.md)
