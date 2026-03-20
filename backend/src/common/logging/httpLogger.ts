@@ -5,8 +5,16 @@ import { v7 as uuidv7 } from 'uuid';
 import { log } from './logger';
 
 function normalizeRequestId(value: unknown): string | undefined {
-  if (value == null || typeof value === 'object') return undefined;
-  return String(value);
+  if (typeof value === 'string') return value;
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+  if (typeof value === 'symbol') return String(value);
+  return undefined;
 }
 
 export const httpLogger = pinoHttp({

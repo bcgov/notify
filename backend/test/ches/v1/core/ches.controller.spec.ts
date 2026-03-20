@@ -25,20 +25,6 @@ describe('ChesController', () => {
             cancelMessage: jest.fn().mockRejectedValue(notImplemented),
           },
         },
-        {
-          provide: ChesApiClient,
-          useValue: {
-            sendEmail: jest.fn(notImplemented),
-            sendEmailMerge: jest.fn(notImplemented),
-            previewEmailMerge: jest.fn(notImplemented),
-            getStatusQuery: jest.fn(notImplemented),
-            getStatusMessage: jest.fn(notImplemented),
-            promoteQuery: jest.fn(notImplemented),
-            promoteMessage: jest.fn(notImplemented),
-            cancelQuery: jest.fn(notImplemented),
-            cancelMessage: jest.fn(notImplemented),
-          },
-        },
       ],
     }).compile();
 
