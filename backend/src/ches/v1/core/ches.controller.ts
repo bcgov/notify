@@ -113,7 +113,11 @@ export class ChesController {
   @Get('status/:msgId')
   @ApiOperation({ summary: 'Get CHES message status' })
   @ApiParam({ name: 'msgId', description: 'Message UUID' })
-  @ApiResponse({ status: 200, description: 'Message status', type: ChesStatusObject })
+  @ApiResponse({
+    status: 200,
+    description: 'Message status',
+    type: ChesStatusObject,
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Message not found' })
   async getStatusMessage(

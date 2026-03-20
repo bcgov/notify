@@ -5,10 +5,34 @@ export default () => {
   const defaultTemplateSubject =
     process.env.DEFAULT_TEMPLATE_SUBJECT || 'Notification';
 
+  const isProd = process.env.NODE_ENV === 'production';
+  const defaultLogLevel = isProd ? 'info' : 'debug';
+
   return {
     // Application
     port: parseInt(process.env.PORT || '3000', 10),
     environment: process.env.NODE_ENV || 'development',
+
+    // Logging (trace, debug, info, warn, error, fatal)
+    log: {
+      level: process.env.LOG_LEVEL || defaultLogLevel,
+    },
+
+    // Rate limiting (same semantics as soba backend)
+    rateLimit: {
+      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
+      max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+      apiWindowMs: parseInt(
+        process.env.RATE_LIMIT_API_WINDOW_MS || '60000',
+        10,
+      ),
+      apiMax: parseInt(process.env.RATE_LIMIT_API_MAX || '60', 10),
+      publicWindowMs: parseInt(
+        process.env.RATE_LIMIT_PUBLIC_WINDOW_MS || '60000',
+        10,
+      ),
+      publicMax: parseInt(process.env.RATE_LIMIT_PUBLIC_MAX || '200', 10),
+    },
 
     // Database
     database: {

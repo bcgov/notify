@@ -2,6 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { NotImplementedException } from '@nestjs/common';
 import { ChesController } from '../../../../src/ches/v1/core/ches.controller';
+import { ChesApiClient } from '../../../../src/ches/ches-api.client';
+
+const notImplemented = () => {
+  throw new NotImplementedException();
+};
 
 describe('ChesController', () => {
   let controller: ChesController;
@@ -18,56 +23,86 @@ describe('ChesController', () => {
             ),
           },
         },
+        {
+          provide: ChesApiClient,
+          useValue: {
+            sendEmail: jest.fn(notImplemented),
+            sendEmailMerge: jest.fn(notImplemented),
+            previewEmailMerge: jest.fn(notImplemented),
+            getStatusQuery: jest.fn(notImplemented),
+            getStatusMessage: jest.fn(notImplemented),
+            promoteQuery: jest.fn(notImplemented),
+            promoteMessage: jest.fn(notImplemented),
+            cancelQuery: jest.fn(notImplemented),
+            cancelMessage: jest.fn(notImplemented),
+          },
+        },
       ],
     }).compile();
 
     controller = module.get(ChesController);
   });
 
-  it('postEmail throws NotImplementedException', () => {
-    expect(() => controller.postEmail()).toThrow(NotImplementedException);
+  it('postEmail throws NotImplementedException', async () => {
+    await expect(
+      controller.postEmail({} as Parameters<ChesController['postEmail']>[0]),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('postMerge throws NotImplementedException', () => {
-    expect(() => controller.postMerge()).toThrow(NotImplementedException);
+  it('postMerge throws NotImplementedException', async () => {
+    await expect(
+      controller.postMerge({} as Parameters<ChesController['postMerge']>[0]),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('postPreview throws NotImplementedException', () => {
-    expect(() => controller.postPreview()).toThrow(NotImplementedException);
+  it('postPreview throws NotImplementedException', async () => {
+    await expect(
+      controller.postPreview(
+        {} as Parameters<ChesController['postPreview']>[0],
+      ),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('getStatusQuery throws NotImplementedException', () => {
-    expect(() => controller.getStatusQuery()).toThrow(NotImplementedException);
+  it('getStatusQuery throws NotImplementedException', async () => {
+    await expect(
+      controller.getStatusQuery(
+        {} as Parameters<ChesController['getStatusQuery']>[0],
+      ),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('getStatusMessage throws NotImplementedException', () => {
-    expect(() => controller.getStatusMessage()).toThrow(
-      NotImplementedException,
-    );
+  it('getStatusMessage throws NotImplementedException', async () => {
+    await expect(
+      controller.getStatusMessage('msg-id'),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('postPromoteQuery throws NotImplementedException', () => {
-    expect(() => controller.postPromoteQuery()).toThrow(
-      NotImplementedException,
-    );
+  it('postPromoteQuery throws NotImplementedException', async () => {
+    await expect(
+      controller.postPromoteQuery(
+        {} as Parameters<ChesController['postPromoteQuery']>[0],
+      ),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('postPromoteMessage throws NotImplementedException', () => {
-    expect(() => controller.postPromoteMessage()).toThrow(
-      NotImplementedException,
-    );
+  it('postPromoteMessage throws NotImplementedException', async () => {
+    await expect(
+      controller.postPromoteMessage('msg-id'),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('deleteCancelQuery throws NotImplementedException', () => {
-    expect(() => controller.deleteCancelQuery()).toThrow(
-      NotImplementedException,
-    );
+  it('deleteCancelQuery throws NotImplementedException', async () => {
+    await expect(
+      controller.deleteCancelQuery(
+        {} as Parameters<ChesController['deleteCancelQuery']>[0],
+      ),
+    ).rejects.toThrow(NotImplementedException);
   });
 
-  it('deleteCancelMessage throws NotImplementedException', () => {
-    expect(() => controller.deleteCancelMessage()).toThrow(
-      NotImplementedException,
-    );
+  it('deleteCancelMessage throws NotImplementedException', async () => {
+    await expect(
+      controller.deleteCancelMessage('msg-id'),
+    ).rejects.toThrow(NotImplementedException);
   });
 
   it('getHealth returns dependencies array', () => {

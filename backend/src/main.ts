@@ -1,14 +1,42 @@
 import './load-env';
+import type { Application } from 'express';
+import rTracer from 'cls-rtracer';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { httpLogger, log } from './common/logging';
+import { PinoLoggerService } from './common/logging/pino-logger.service';
+import { createRateLimiters } from './common/rate-limit/rate-limit';
 
 async function bootstrap() {
-  const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+  app.useLogger(new PinoLoggerService());
+
   const configService = app.get(ConfigService);
+
+  // Request ID and HTTP logging (must run early)
+  app.use(
+    rTracer.expressMiddleware({
+      useHeader: true,
+      headerName: 'X-Request-Id',
+      echoHeader: true,
+    }),
+  );
+  app.use(httpLogger);
+
+  // Global rate limit (route-specific limits applied via RateLimitModule)
+  const rateLimitConfig = configService.get<{
+    windowMs: number;
+    max: number;
+    apiWindowMs: number;
+    apiMax: number;
+    publicWindowMs: number;
+    publicMax: number;
+  }>('rateLimit');
+  const { globalRateLimit } = createRateLimiters(rateLimitConfig);
+  (app.getHttpAdapter().getInstance() as Application).use(globalRateLimit);
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -51,7 +79,7 @@ async function bootstrap() {
   });
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 3000;
+  const port = configService.get<number>('port') ?? 3000;
   await app.listen(port);
 
   const emailAdapter =
@@ -60,11 +88,9 @@ async function bootstrap() {
   const templateEngine =
     configService.get<string>('gcNotify.defaultTemplateEngine') ?? 'jinja2';
 
-  logger.log(`BC Notify API running on port ${port}`);
-  logger.log(`Swagger docs: http://localhost:${port}/api/docs`);
-  logger.log(
-    `Adapters: email=${emailAdapter}, sms=${smsAdapter}, template=${templateEngine}`,
-  );
+  log.info({ port }, 'BC Notify API running');
+  log.info(`Swagger docs: http://localhost:${port}/api/docs`);
+  log.info({ emailAdapter, smsAdapter, templateEngine }, 'Adapters configured');
 }
 
 void bootstrap();

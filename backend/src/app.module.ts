@@ -14,6 +14,7 @@ import { NotifyTypesModule } from './notify-types/notify-types.module';
 import { ChesModule } from './ches/ches.module';
 import { HealthModule } from './health/health.module';
 import { NotifyModule } from './notify/notify.module';
+import { RateLimitModule } from './common/rate-limit/rate-limit.module';
 import configuration from './config/configuration';
 
 const config = configuration();
@@ -30,6 +31,7 @@ const config = configuration();
     TemplateResolutionModule.forRoot({
       defaultTemplateEngine: config.gcNotify?.defaultTemplateEngine ?? 'jinja2',
     }),
+    RateLimitModule,
     HealthModule,
     NotifyModule,
     GcNotifyModule.forRoot({}),
