@@ -28,6 +28,21 @@ services:
     networks:
       - notify-dev
 
+  kong:
+    image: kong:3.9
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong-config/kong.yml
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount compose file's directory so kong.yml is at /kong-config/kong.yml (relative to -f .devcontainer/docker-compose.yml)
+      - .:/kong-config:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - notify-dev
+
 volumes:
   pgdata:
 

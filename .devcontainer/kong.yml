@@ -1,0 +1,54 @@
+# Kong 3.x declarative config — local devcontainer simulation of BC Gov API Gateway.
+# No JWT: request-transformer injects x-consumer-* headers per route for workspace/tenant resolution.
+_format_version: "3.0"
+
+services:
+  - name: notify-backend
+    url: http://host.docker.internal:3000
+
+# More specific paths first; default (/) last.
+routes:
+  - name: route-john
+    service: notify-backend
+    paths:
+      - /john
+    strip_path: true
+
+  - name: route-sue
+    service: notify-backend
+    paths:
+      - /sue
+    strip_path: true
+
+  - name: route-default
+    service: notify-backend
+    paths:
+      - /
+
+plugins:
+  - name: request-transformer
+    route: route-john
+    config:
+      add:
+        headers:
+          - "x-consumer-custom-id:LOCAL-JOHN-CLIENT"
+          - "x-consumer-username:LOCAL-JOHN-CLIENT"
+          - "x-consumer-id:0894cb06-59ee-47a9-8514-1af31181d3c9"
+
+  - name: request-transformer
+    route: route-sue
+    config:
+      add:
+        headers:
+          - "x-consumer-custom-id:LOCAL-SUE-CLIENT"
+          - "x-consumer-username:LOCAL-SUE-CLIENT"
+          - "x-consumer-id:a1b2c3d4-59ee-47a9-8514-1af31181d3c9"
+
+  - name: request-transformer
+    route: route-default
+    config:
+      add:
+        headers:
+          - "x-consumer-custom-id:LOCAL-DEFAULT-CLIENT"
+          - "x-consumer-username:LOCAL-DEFAULT-CLIENT"
+          - "x-consumer-id:b2c3d4e5-59ee-47a9-8514-1af31181d3c9"

@@ -9,7 +9,8 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "npm run kill-port && nest start --watch",
+    "kill-port": "sh -c 'PIDS=$(lsof -ti:3000 2>/dev/null); [ -n \"$PIDS\" ] && kill -9 $PIDS' 2>/dev/null; true",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test,scripts}/**/*.ts\" --fix",
@@ -24,7 +25,9 @@
     "demo": "npx ts-node scripts/demo/business-scenario.ts",
     "demo:staging": "DEMO_ENV_FILE=test/e2e/env.staging npx ts-node scripts/demo/business-scenario.ts",
     "demo:dual-transport": "npx ts-node scripts/demo/dual-transport-demo.ts",
-    "demo:dual-email-adapter": "npx ts-node scripts/demo/dual-email-adapter-demo.ts"
+    "demo:dual-email-adapter": "npx ts-node scripts/demo/dual-email-adapter-demo.ts",
+    "demo:gateway-transport": "npx ts-node scripts/demo/gateway-transport-demo.ts",
+    "demo:kong-routes": "npx ts-node scripts/demo/kong-routes-demo.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

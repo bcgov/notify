@@ -19,7 +19,7 @@ import {
   ApiParam,
   ApiBody,
 } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../../../common/guards';
+import { AuthenticatedGuard } from '../../../common/guards';
 import { ChesApiClient } from '../../ches-api.client';
 import type { ChesStatusQuery } from '../../ches-api.client';
 import { ChesMessageObject } from './schemas/ches-message-object';
@@ -29,7 +29,7 @@ import { ChesStatusObject } from './schemas/ches-status-object';
 
 @ApiTags('CHES')
 @ApiSecurity('api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('ches')
 export class ChesController {
   constructor(private readonly chesApiClient: ChesApiClient) {}

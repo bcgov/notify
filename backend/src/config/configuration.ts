@@ -72,9 +72,25 @@ export default () => {
       fromNumber: process.env.TWILIO_FROM_NUMBER || defaultSmsFrom,
     },
 
-    // API Authentication
-    api: {
-      apiKey: process.env.API_KEY,
+    auth: {
+      strategies: process.env.AUTH_STRATEGIES
+        ? process.env.AUTH_STRATEGIES.split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : undefined,
+      bootstrap: {
+        path: process.env.AUTH_BOOTSTRAP_PATH,
+        json: process.env.AUTH_BOOTSTRAP_JSON,
+      },
+      gatewayServiceClient: {
+        clientIdHeader: process.env.AUTH_GATEWAY_SERVICE_CLIENT_ID_HEADER,
+      },
+      gcNotifyApiKey: {
+        enabled: process.env.AUTH_GC_NOTIFY_API_KEY_ENABLED !== 'false',
+        apiKey: process.env.AUTH_GC_NOTIFY_API_KEY,
+        defaultWorkspaceId:
+          process.env.AUTH_GC_NOTIFY_API_KEY_DEFAULT_WORKSPACE_ID || 'default',
+      },
     },
 
     // GC Notify adapters (delivery, template, storage)

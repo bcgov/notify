@@ -17,7 +17,7 @@ import {
   ApiSecurity,
 } from '@nestjs/swagger';
 import { NotifyTypesService } from '../../notify-types.service';
-import { ApiKeyGuard } from '../../../common/guards';
+import { AuthenticatedGuard } from '../../../common/guards';
 import {
   NotifyType,
   CreateNotifyTypeRequest,
@@ -26,7 +26,7 @@ import {
 
 @ApiTags('NotifyTypes')
 @ApiSecurity('api-key')
-@UseGuards(ApiKeyGuard)
+@UseGuards(AuthenticatedGuard)
 @Controller('notifyTypes')
 export class NotifyTypesController {
   constructor(private readonly notifyTypesService: NotifyTypesService) {}
