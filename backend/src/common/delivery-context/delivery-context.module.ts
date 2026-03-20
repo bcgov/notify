@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AdaptersModule } from '../../adapters/adapters.module';
 import { DeliveryContextMiddleware } from './delivery-context.middleware';
@@ -15,13 +15,10 @@ import { DeliveryAdapterResolver } from './delivery-adapter.resolver';
     DeliveryAdapterResolver,
   ],
   exports: [
+    DeliveryContextMiddleware,
     DeliveryContextService,
     DeliveryAdapterResolver,
     DeliveryContextStorage,
   ],
 })
-export class DeliveryContextModule implements NestModule {
-  configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(DeliveryContextMiddleware).forRoutes('*path');
-  }
-}
+export class DeliveryContextModule {}

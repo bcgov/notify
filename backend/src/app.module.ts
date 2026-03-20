@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -18,6 +18,9 @@ import { HealthModule } from './health/health.module';
 import { ContextModule } from './context/context.module';
 import { NotifyModule } from './notify/notify.module';
 import { RateLimitModule } from './common/rate-limit/rate-limit.module';
+import { DeliveryContextMiddleware } from './common/delivery-context/delivery-context.middleware';
+import { DemoInjectDeliveryHeadersMiddleware } from './demo-notify-gateway/demo-inject-delivery-headers.middleware';
+import { DemoNotifyGatewayModule } from './demo-notify-gateway/demo-notify-gateway.module';
 import configuration from './config/configuration';
 
 const config = configuration();
@@ -29,6 +32,7 @@ const config = configuration();
       envFilePath: ['.env', '.env.local'],
       load: [configuration],
     }),
+    DemoNotifyGatewayModule,
     AuthModule,
     AdaptersModule.forRoot({}),
     DeliveryContextModule,
@@ -50,4 +54,10 @@ const config = configuration();
   controllers: [AppController],
   providers: [AppService, ServiceRootRegistrar],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(DemoInjectDeliveryHeadersMiddleware, DeliveryContextMiddleware)
+      .forRoutes('*path');
+  }
+}

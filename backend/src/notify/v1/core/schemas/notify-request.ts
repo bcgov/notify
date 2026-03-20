@@ -1,15 +1,17 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { OverrideOrAugment } from './override-or-augment';
 
 export class NotifyRequest {
-  @ApiProperty({
-    description: 'Identifier for a stored defaults profile (notifyType code)',
+  @ApiPropertyOptional({
+    description:
+      'Required for template mode (stored notify type). Omit when using inline email (NOTIFY_INLINE_EMAIL_ENABLED + subject, body, renderer in override.common).',
     example: 'single-email',
   })
+  @IsOptional()
   @IsString()
-  notifyType: string;
+  notifyType?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

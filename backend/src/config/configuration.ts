@@ -1,12 +1,6 @@
 function parseTrustProxy(): number | undefined {
   const raw = process.env.TRUST_PROXY?.trim().toLowerCase();
-  if (
-    !raw ||
-    raw === 'false' ||
-    raw === '0' ||
-    raw === 'no' ||
-    raw === 'off'
-  ) {
+  if (!raw || raw === 'false' || raw === '0' || raw === 'no' || raw === 'off') {
     return undefined;
   }
   if (raw === 'true' || raw === 'yes' || raw === 'on' || raw === '1') {
@@ -127,6 +121,13 @@ export default () => {
         process.env.EMAIL_TRANSPORT ||
         'nodemailer',
       sms: process.env.SMS_ADAPTER || process.env.SMS_TRANSPORT || 'twilio',
+    },
+
+    // Unified /notify inline email (optional; no stored notify type or template)
+    notify: {
+      inlineEmailEnabled:
+        process.env.NOTIFY_INLINE_EMAIL_ENABLED === 'true' ||
+        process.env.NOTIFY_INLINE_EMAIL_ENABLED === '1',
     },
 
     // GC Notify template engine and external (passthrough mode)

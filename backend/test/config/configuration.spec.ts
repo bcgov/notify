@@ -72,6 +72,14 @@ test('configuration: trustProxy parses multi-hop proxy count', () => {
   expect(configuration().trustProxy).toBe(2);
 });
 
+test('configuration: notify.inlineEmailEnabled when NOTIFY_INLINE_EMAIL_ENABLED set', () => {
+  delete process.env.NOTIFY_INLINE_EMAIL_ENABLED;
+  expect(configuration().notify.inlineEmailEnabled).toBe(false);
+
+  process.env.NOTIFY_INLINE_EMAIL_ENABLED = 'true';
+  expect(configuration().notify.inlineEmailEnabled).toBe(true);
+});
+
 test('configuration: rate limit fields match parsed env values', () => {
   process.env.RATE_LIMIT_WINDOW_MS = '120000';
   process.env.RATE_LIMIT_MAX = '10';

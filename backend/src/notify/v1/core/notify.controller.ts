@@ -30,7 +30,10 @@ export class NotifyController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Send a notification using stored defaults for notifyType',
+    summary:
+      'Send a notification (template mode or inline email when NOTIFY_INLINE_EMAIL_ENABLED)',
+    description:
+      'Template mode: pass notifyType and templateId (or notify type defaults). Inline mode (feature flag): omit notifyType; pass override.common.to, subject, body, renderer, optional params/bodyType; sender (from) from identity/defaults.',
   })
   @ApiHeader({
     name: 'X-Delivery-Email-Adapter',
