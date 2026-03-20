@@ -16,6 +16,7 @@ import { ChesModule } from './ches/ches.module';
 import { HealthModule } from './health/health.module';
 import { ContextModule } from './context/context.module';
 import { NotifyModule } from './notify/notify.module';
+import { RateLimitModule } from './common/rate-limit/rate-limit.module';
 import configuration from './config/configuration';
 
 const config = configuration();
@@ -33,6 +34,7 @@ const config = configuration();
     TemplateResolutionModule.forRoot({
       defaultTemplateEngine: config.gcNotify?.defaultTemplateEngine ?? 'jinja2',
     }),
+    RateLimitModule,
     HealthModule,
     ContextModule,
     NotifyModule,
