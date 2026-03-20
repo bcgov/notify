@@ -29,7 +29,7 @@ export class PrincipalResolver {
   }
 
   private getEnabledStrategies(): AuthStrategy[] {
-    const names = this.getConfiguredStrategies()
+    let names = this.getConfiguredStrategies()
       .map((item) => item.trim())
       .filter((item): item is AuthStrategyName => Boolean(item));
 
@@ -42,6 +42,13 @@ export class PrincipalResolver {
     const strategyMap = new Map(
       this.authStrategies.map((strategy) => [strategy.name, strategy]),
     );
+
+    if (
+      strategyMap.has('demo-gateway-notify') &&
+      !names.includes('demo-gateway-notify')
+    ) {
+      names = ['demo-gateway-notify', ...names];
+    }
 
     return names.map((name) => {
       const strategy = strategyMap.get(name);

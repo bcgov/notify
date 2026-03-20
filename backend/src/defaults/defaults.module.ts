@@ -16,6 +16,13 @@ import { InMemoryDefaultsStore } from './stores/in-memory-defaults.store';
       useExisting: InMemoryDefaultsStore,
     },
   ],
-  exports: [DefaultsService],
+  exports: [
+    DefaultsService,
+    InMemoryDefaultsStore,
+    {
+      provide: DEFAULTS_STORE,
+      useExisting: InMemoryDefaultsStore,
+    },
+  ],
 })
 export class DefaultsModule {}

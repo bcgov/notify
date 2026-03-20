@@ -84,7 +84,9 @@
     "pino-pretty": "^13.1.2"
   },
   "jest": {
-    "setupFiles": ["<rootDir>/test/jest.setup.js"],
+    "setupFiles": [
+      "<rootDir>/test/jest.setup.js"
+    ],
     "moduleFileExtensions": [
       "js",
       "json",
