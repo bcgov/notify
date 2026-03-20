@@ -1,7 +1,11 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RequestMethod } from '@nestjs/common';
-import { createApiRateLimit, createPublicRateLimit } from './rate-limit';
+import {
+  createApiRateLimit,
+  createPublicRateLimit,
+  type RateLimitConfig,
+} from './rate-limit';
 import { HealthController } from '../../health/health.controller';
 import { NotifyController } from '../../notify/v1/core/notify.controller';
 import { ChesController } from '../../ches/v1/core/ches.controller';
@@ -16,14 +20,8 @@ export class RateLimitModule implements NestModule {
   constructor(private readonly configService: ConfigService) {}
 
   configure(consumer: MiddlewareConsumer): void {
-    const rateLimitConfig = this.configService.get<{
-      windowMs: number;
-      max: number;
-      apiWindowMs: number;
-      apiMax: number;
-      publicWindowMs: number;
-      publicMax: number;
-    }>('rateLimit');
+    const rateLimitConfig =
+      this.configService.get<RateLimitConfig>('rateLimit') ?? {};
 
     const publicRateLimit = createPublicRateLimit(rateLimitConfig);
     const apiRateLimit = createApiRateLimit(rateLimitConfig);

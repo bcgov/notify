@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ServiceRootRegistrar } from './service-root.registrar';
 import { AdaptersModule } from './adapters/adapters.module';
 import { AuthModule } from './common/auth/auth.module';
 import { DeliveryContextModule } from './common/delivery-context/delivery-context.module';
@@ -47,6 +48,6 @@ const config = configuration();
     ChesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, ServiceRootRegistrar],
 })
 export class AppModule {}

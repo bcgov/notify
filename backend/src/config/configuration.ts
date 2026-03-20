@@ -1,3 +1,24 @@
+function parseTrustProxy(): number | undefined {
+  const raw = process.env.TRUST_PROXY?.trim().toLowerCase();
+  if (
+    !raw ||
+    raw === 'false' ||
+    raw === '0' ||
+    raw === 'no' ||
+    raw === 'off'
+  ) {
+    return undefined;
+  }
+  if (raw === 'true' || raw === 'yes' || raw === 'on' || raw === '1') {
+    return 1;
+  }
+  const n = parseInt(raw, 10);
+  if (!Number.isNaN(n) && n >= 1) {
+    return n;
+  }
+  return undefined;
+}
+
 export default () => {
   const defaultEmailFrom =
     process.env.DEFAULT_EMAIL_FROM || 'noreply@localhost';
@@ -12,6 +33,8 @@ export default () => {
     // Application
     port: parseInt(process.env.PORT || '3000', 10),
     environment: process.env.NODE_ENV || 'development',
+    /** Express `trust proxy` hop count when `TRUST_PROXY` is set (required behind API gateway / LB for correct client IP + rate limiting). */
+    trustProxy: parseTrustProxy(),
 
     // Logging (trace, debug, info, warn, error, fatal)
     log: {
@@ -22,6 +45,10 @@ export default () => {
     rateLimit: {
       windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
       max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+      serviceRootMax: parseInt(
+        process.env.RATE_LIMIT_SERVICE_ROOT_MAX || '2000',
+        10,
+      ),
       apiWindowMs: parseInt(
         process.env.RATE_LIMIT_API_WINDOW_MS || '60000',
         10,
