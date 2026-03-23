@@ -121,6 +121,44 @@ describe('PrincipalResolver', () => {
     expect(gcNotifyAuthenticateMock).not.toHaveBeenCalled();
   });
 
+  it('prepends demo-gateway-notify when that strategy is registered', async () => {
+    const demoAuthenticateMock = jest.fn().mockReturnValue(null);
+    const demoStrategy: AuthStrategy = {
+      name: 'demo-gateway-notify',
+      authenticate: demoAuthenticateMock,
+    };
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PrincipalResolver,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              switch (key) {
+                case 'auth.strategies':
+                  return ['gateway-service-client', 'gc-notify-api-key'];
+                default:
+                  return undefined;
+              }
+            }),
+          },
+        },
+        {
+          provide: AUTH_STRATEGIES,
+          useValue: [demoStrategy, gatewayStrategy, gcNotifyApiKeyStrategy],
+        },
+      ],
+    }).compile();
+
+    const resolver = module.get(PrincipalResolver);
+    gatewayAuthenticateMock.mockReturnValue(null);
+    gcNotifyAuthenticateMock.mockReturnValue(null);
+
+    resolver.resolveOptional({ headers: {} } as never);
+
+    expect(demoAuthenticateMock).toHaveBeenCalled();
+  });
+
   it('fails fast when an unsupported strategy is configured', async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [

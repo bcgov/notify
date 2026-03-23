@@ -66,6 +66,7 @@ describe('NotifyService', () => {
       if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
       if (key === 'defaults.templates.defaultSubject')
         return fallback ?? 'Notification';
+      if (key === 'notify.inlineEmailEnabled') return false;
       return undefined;
     });
 
@@ -287,6 +288,151 @@ describe('NotifyService', () => {
         notifyType: 'single-email',
         override: {
           common: { to: ['u@x.com'], templateId: 't-email', sendAs: 'email' },
+        },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('send inline email when NOTIFY_INLINE_EMAIL_ENABLED without notifyType', async () => {
+    const sendMock = jest.fn().mockResolvedValue({ messageId: 'msg-inline' });
+    const emailTransport: IEmailTransport = {
+      send: sendMock,
+    };
+    const configGetMock = jest.fn((key: string, fallback?: string) => {
+      if (key === 'nodemailer.from') return fallback ?? 'noreply@localhost';
+      if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
+      if (key === 'defaults.templates.defaultSubject')
+        return fallback ?? 'Notification';
+      if (key === 'notify.inlineEmailEnabled') return true;
+      return undefined;
+    });
+    const deliveryAdapterResolver = { getEmailAdapter: () => emailTransport };
+    const mod = await Test.createTestingModule({
+      providers: [
+        NotifyService,
+        IdentitiesService,
+        NotifyTypesService,
+        DefaultsService,
+        InMemoryTemplateStore,
+        InMemoryTemplateResolver,
+        InMemoryDefaultsStore,
+        InMemoryNotifyTypeStore,
+        {
+          provide: DEFAULTS_STORE,
+          useExisting: InMemoryDefaultsStore,
+        },
+        { provide: ConfigService, useValue: { get: configGetMock } },
+        { provide: DeliveryAdapterResolver, useValue: deliveryAdapterResolver },
+        {
+          provide: DeliveryContextService,
+          useValue: {
+            getEmailAdapterKey: () => 'nodemailer',
+            getWorkspaceId: () => 'default',
+          },
+        },
+        { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
+        { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
+        { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
+        { provide: SENDER_STORE, useClass: InMemorySenderStore },
+      ],
+    }).compile();
+    const inlineSvc = mod.get(NotifyService);
+
+    const result = await inlineSvc.send({
+      override: {
+        common: {
+          to: ['inline@example.com'],
+          subject: 'Hi {{name}}',
+          body: 'Hello {{name}}',
+          renderer: 'jinja2',
+          params: { name: 'Sam' },
+          sendAs: 'email',
+        },
+      },
+    });
+
+    expect(result.notifyId).toBeDefined();
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'inline@example.com',
+        subject: 'Hi Sam',
+        body: 'Hello Sam',
+      }),
+    );
+  });
+
+  it('send inline email throws BadRequestException for unknown renderer', async () => {
+    const emailTransport: IEmailTransport = {
+      send: jest.fn().mockResolvedValue({ messageId: 'x' }),
+    };
+    const configGetMock = jest.fn((key: string, fallback?: string) => {
+      if (key === 'nodemailer.from') return fallback ?? 'noreply@localhost';
+      if (key === 'defaults.email.from') return fallback ?? 'noreply@localhost';
+      if (key === 'defaults.templates.defaultSubject')
+        return fallback ?? 'Notification';
+      if (key === 'notify.inlineEmailEnabled') return true;
+      return undefined;
+    });
+    const mod = await Test.createTestingModule({
+      providers: [
+        NotifyService,
+        IdentitiesService,
+        NotifyTypesService,
+        DefaultsService,
+        InMemoryTemplateStore,
+        InMemoryTemplateResolver,
+        InMemoryDefaultsStore,
+        InMemoryNotifyTypeStore,
+        {
+          provide: DEFAULTS_STORE,
+          useExisting: InMemoryDefaultsStore,
+        },
+        { provide: ConfigService, useValue: { get: configGetMock } },
+        {
+          provide: DeliveryAdapterResolver,
+          useValue: { getEmailAdapter: () => emailTransport },
+        },
+        {
+          provide: DeliveryContextService,
+          useValue: {
+            getEmailAdapterKey: () => 'nodemailer',
+            getWorkspaceId: () => 'default',
+          },
+        },
+        { provide: TEMPLATE_RESOLVER, useClass: InMemoryTemplateResolver },
+        { provide: TEMPLATE_RENDERER_REGISTRY, useValue: rendererRegistry },
+        { provide: DEFAULT_TEMPLATE_ENGINE, useValue: 'jinja2' },
+        { provide: SENDER_STORE, useClass: InMemorySenderStore },
+      ],
+    }).compile();
+    const inlineSvc = mod.get(NotifyService);
+
+    await expect(
+      inlineSvc.send({
+        override: {
+          common: {
+            to: ['u@x.com'],
+            subject: 'S',
+            body: 'B',
+            renderer: 'nonexistent-engine-xyz',
+            sendAs: 'email',
+          },
+        },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('send throws BadRequestException when notifyType missing and inline disabled', async () => {
+    await expect(
+      service.send({
+        override: {
+          common: {
+            to: ['u@x.com'],
+            subject: 'S',
+            body: 'B',
+            renderer: 'jinja2',
+            sendAs: 'email',
+          },
         },
       }),
     ).rejects.toThrow(BadRequestException);

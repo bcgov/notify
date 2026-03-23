@@ -8,13 +8,22 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { httpLogger, log } from './common/logging';
 import { PinoLoggerService } from './common/logging/pino-logger.service';
-import { createRateLimiters } from './common/rate-limit/rate-limit';
+import {
+  createRateLimiters,
+  type RateLimitConfig,
+} from './common/rate-limit/rate-limit';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useLogger(new PinoLoggerService());
 
   const configService = app.get(ConfigService);
+  const expressApp = app.getHttpAdapter().getInstance() as Application;
+
+  const trustProxy = configService.get<number | undefined>('trustProxy');
+  if (trustProxy != null) {
+    expressApp.set('trust proxy', trustProxy);
+  }
 
   // Request ID and HTTP logging (must run early)
   app.use(
@@ -27,16 +36,9 @@ async function bootstrap() {
   app.use(httpLogger);
 
   // Global rate limit (route-specific limits applied via RateLimitModule)
-  const rateLimitConfig = configService.get<{
-    windowMs: number;
-    max: number;
-    apiWindowMs: number;
-    apiMax: number;
-    publicWindowMs: number;
-    publicMax: number;
-  }>('rateLimit');
-  const { globalRateLimit } = createRateLimiters(rateLimitConfig);
-  (app.getHttpAdapter().getInstance() as Application).use(globalRateLimit);
+  const rateLimitConfig = configService.get<RateLimitConfig>('rateLimit');
+  const { globalRateLimit } = createRateLimiters(rateLimitConfig ?? {});
+  expressApp.use(globalRateLimit);
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -61,6 +63,7 @@ async function bootstrap() {
       { type: 'apiKey', name: 'Authorization', in: 'header' },
       'api-key',
     )
+    .addTag('API', 'Service metadata')
     .addTag('Health', 'Health check endpoints')
     .addTag('CHES', 'Common Hosted Email Service passthrough API')
     .addTag('Notify', 'Unified notification send and track')

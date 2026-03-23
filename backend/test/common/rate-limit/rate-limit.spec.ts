@@ -31,6 +31,24 @@ test('global rate limit: third GET returns 429 and JSON error body', async () =>
   expect(res.body).toEqual(rateLimitErrorBody);
 });
 
+test('global rate limit: GET / uses higher serviceRootMax', async () => {
+  const app = express();
+  app.use(
+    createGlobalRateLimit({
+      max: 2,
+      serviceRootMax: 4,
+      windowMs: 60_000,
+    }),
+  );
+  app.get('/', (_req, res) => res.json({ ok: true }));
+  const agent = request(app);
+  for (let i = 0; i < 4; i++) {
+    await agent.get('/').expect(200);
+  }
+  const res = await agent.get('/').expect(429);
+  expect(res.body).toEqual(rateLimitErrorBody);
+});
+
 test('API rate limit: second POST returns 429 and JSON error body', async () => {
   const agent = request(appWithApiMax(1));
   await agent.post('/api/x').expect(201);

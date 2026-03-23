@@ -13,10 +13,12 @@ import {
   SERVICE_CLIENT_REGISTRY,
   WORKSPACE_REGISTRY,
 } from './tokens';
+import { DemoGatewayNotifyAuthStrategy } from '../../demo-notify-gateway/demo-gateway-notify-auth.strategy';
+import { DemoNotifyGatewayModule } from '../../demo-notify-gateway/demo-notify-gateway.module';
 
 @Global()
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, DemoNotifyGatewayModule],
   providers: [
     AuthenticatedGuard,
     PrincipalResolver,
@@ -36,13 +38,19 @@ import {
     {
       provide: AUTH_STRATEGIES,
       useFactory: (
+        demoGatewayNotifyAuthStrategy: DemoGatewayNotifyAuthStrategy,
         gatewayServiceClientAuthStrategy: GatewayServiceClientAuthStrategy,
         gcNotifyApiKeyAuthStrategy: GcNotifyApiKeyAuthStrategy,
       ): AuthStrategy[] => [
+        demoGatewayNotifyAuthStrategy,
         gatewayServiceClientAuthStrategy,
         gcNotifyApiKeyAuthStrategy,
       ],
-      inject: [GatewayServiceClientAuthStrategy, GcNotifyApiKeyAuthStrategy],
+      inject: [
+        DemoGatewayNotifyAuthStrategy,
+        GatewayServiceClientAuthStrategy,
+        GcNotifyApiKeyAuthStrategy,
+      ],
     },
   ],
   exports: [

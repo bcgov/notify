@@ -1,4 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   IEmailTransport,
@@ -29,6 +36,12 @@ interface ChesEmailPayload {
 interface ChesEmailResponse {
   messages: Array<{ msgId: string; tag?: string; to: string[] }>;
   txId: string;
+}
+
+interface ChesErrorResponse {
+  detail?: string;
+  message?: string;
+  errors?: Array<{ message: string }>;
 }
 
 @Injectable()
@@ -81,11 +94,25 @@ export class ChesEmailTransport implements IEmailTransport {
 
     if (!response.ok) {
       const errText = await response.text();
-      this.logger.error(`CHES email failed: ${response.status} ${errText}`);
-      throw new Error(`CHES email failed: ${response.status} - ${errText}`);
+      this.throwForChesApiFailure(response.status, errText, 'email');
     }
 
-    const data = (await response.json()) as ChesEmailResponse;
+    let data: ChesEmailResponse;
+    try {
+      data = (await response.json()) as ChesEmailResponse;
+    } catch (caught: unknown) {
+      const errMeta =
+        caught instanceof Error
+          ? { name: caught.name, message: caught.message }
+          : { message: String(caught) };
+      this.logger.error(
+        errMeta,
+        'CHES email: success response was not valid JSON',
+      );
+      throw new BadGatewayException(
+        'CHES email returned a non-JSON response body',
+      );
+    }
     const messageId = data.messages?.[0]?.msgId ?? data.txId;
 
     return {
@@ -118,12 +145,25 @@ export class ChesEmailTransport implements IEmailTransport {
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(
-        `CHES token request failed: ${response.status} - ${errText}`,
-      );
+      this.throwForChesApiFailure(response.status, errText, 'token');
     }
 
-    const data = (await response.json()) as ChesTokenResponse;
+    let data: ChesTokenResponse;
+    try {
+      data = (await response.json()) as ChesTokenResponse;
+    } catch (caught: unknown) {
+      const errMeta =
+        caught instanceof Error
+          ? { name: caught.name, message: caught.message }
+          : { message: String(caught) };
+      this.logger.error(
+        errMeta,
+        'CHES token: success response was not valid JSON',
+      );
+      throw new BadGatewayException(
+        'CHES token endpoint returned a non-JSON response body',
+      );
+    }
     const expiresIn = data.expires_in ?? 300;
     this.tokenCache = {
       token: data.access_token,
@@ -131,6 +171,58 @@ export class ChesEmailTransport implements IEmailTransport {
     };
 
     return data.access_token;
+  }
+
+  /** Map CHES HTTP errors to Nest exceptions so callers see the upstream message (not a generic 500). */
+  private throwForChesApiFailure(
+    status: number,
+    errBody: string,
+    kind: 'email' | 'token',
+  ): never {
+    let errData: ChesErrorResponse | null = null;
+    try {
+      errData = JSON.parse(errBody) as ChesErrorResponse;
+    } catch {
+      this.logger.debug(
+        `CHES ${kind} non-JSON error body: ${errBody.slice(0, 200)}`,
+      );
+    }
+
+    const message =
+      errData?.detail ??
+      errData?.message ??
+      errData?.errors?.[0]?.message ??
+      errBody ??
+      String(status);
+
+    const label = kind === 'token' ? 'CHES token' : 'CHES email';
+    this.logger.error(
+      { status, kind, chesError: errBody.slice(0, 2000) },
+      `${label} request failed`,
+    );
+
+    if (status === 400) {
+      throw new BadRequestException(`${label}: ${message}`);
+    }
+    if (status === 401 || status === 403) {
+      throw new UnauthorizedException(`${label}: ${message}`);
+    }
+    if (status === 404) {
+      throw new NotFoundException(`${label}: ${message}`);
+    }
+    if (status === 422) {
+      throw new BadRequestException(`${label} validation: ${message}`);
+    }
+    if (status === 429) {
+      throw new BadRequestException(`${label} rate limit: ${message}`);
+    }
+    if (status >= 500) {
+      throw new BadGatewayException(
+        `${label}: upstream ${status} - ${message}`,
+      );
+    }
+
+    throw new BadGatewayException(`${label}: ${status} - ${message}`);
   }
 
   private mapAttachments(

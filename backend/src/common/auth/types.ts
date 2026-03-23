@@ -1,7 +1,10 @@
 import type { Request } from 'express';
 
 export type PrincipalType = 'service' | 'user';
-export type AuthSource = 'gateway-service-client' | 'gc-notify-api-key';
+export type AuthSource =
+  | 'gateway-service-client'
+  | 'gc-notify-api-key'
+  | 'demo-gateway-notify';
 export type AuthStrategyName = AuthSource;
 
 export interface RequestPrincipal {
