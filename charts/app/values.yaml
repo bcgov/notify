@@ -81,7 +81,7 @@ backend:
   apiKey: ""
   #-- Demo notify gateway (Kong-style auth without bootstrap) + inline /notify. See backend/src/demo-notify-gateway/README.md
   demoNotifyGateway:
-    enabled: true
+    enabled: false
     trustProxy: "1"
     notifyInlineEmailEnabled: "true"
     gatewayAuthEnabled: "true"
