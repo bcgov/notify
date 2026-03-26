@@ -1,0 +1,19 @@
+{{- if and .Values.backend.enabled .Values.backend.demoNotifyGateway.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "backend.fullname" . }}-demo-notify-gateway
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "backend.labels" . | nindent 4 }}
+    app.kubernetes.io/component: demo-notify-gateway
+data:
+  TRUST_PROXY: {{ .Values.backend.demoNotifyGateway.trustProxy | quote }}
+  NOTIFY_INLINE_EMAIL_ENABLED: {{ .Values.backend.demoNotifyGateway.notifyInlineEmailEnabled | quote }}
+  DEMO_NOTIFY_GATEWAY_AUTH_ENABLED: {{ .Values.backend.demoNotifyGateway.gatewayAuthEnabled | quote }}
+  DEMO_NOTIFY_SENDER_EMAIL: {{ .Values.backend.demoNotifyGateway.senderEmail | quote }}
+  DEMO_NOTIFY_EMAIL_ADAPTER: {{ .Values.backend.demoNotifyGateway.emailAdapter | quote }}
+  DEMO_NOTIFY_WORKSPACE_ID: {{ .Values.backend.demoNotifyGateway.workspaceId | quote }}
+  DEMO_NOTIFY_AUTH_PATHS: {{ .Values.backend.demoNotifyGateway.authPaths | quote }}
+  CHES_FROM: {{ .Values.backend.demoNotifyGateway.chesFrom | quote }}
+{{- end }}

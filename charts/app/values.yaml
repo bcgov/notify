@@ -79,6 +79,19 @@ backend:
     minAvailable: 1 # the minimum number of pods that must be available during the disruption budget.
   #-- API key for backend authentication. Injected via GitHub Actions secret at deploy time. Never commit a real value here.
   apiKey: ""
+  #-- Demo notify gateway (Kong-style auth without bootstrap) + inline /notify. See backend/src/demo-notify-gateway/README.md
+  demoNotifyGateway:
+    enabled: true
+    trustProxy: "1"
+    notifyInlineEmailEnabled: "true"
+    gatewayAuthEnabled: "true"
+    # Non-empty: fixed id (must match API gateway trusted header). Empty: chart generates a UUID on first install and reuses it from Secret on upgrade (helm lookup).
+    gatewayClientId: ""
+    senderEmail: "no.reply@gov.bc.ca"
+    emailAdapter: "ches"
+    workspaceId: "default"
+    authPaths: "POST:/api/v1/notify"
+    chesFrom: "no.reply@gov.bc.ca"
 
 frontend:
   # -- enable or disable a component deployment.
