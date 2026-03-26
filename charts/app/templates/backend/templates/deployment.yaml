@@ -64,10 +64,18 @@ spec:
             allowPrivilegeEscalation: false
           image: "{{ .Values.global.registry | default "ghcr.io" }}/{{.Values.global.repository}}:{{ .Values.global.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ default "Always" .Values.backend.imagePullPolicy }}
-          {{- if and .Values.global.secrets .Values.global.secrets.enabled }}
+          {{- if or (and .Values.global.secrets .Values.global.secrets.enabled) .Values.backend.demoNotifyGateway.enabled }}
           envFrom:
+            {{- if and .Values.global.secrets .Values.global.secrets.enabled }}
             - secretRef:
                 name: {{.Release.Name}}-backend
+            {{- end }}
+            {{- if .Values.backend.demoNotifyGateway.enabled }}
+            - configMapRef:
+                name: {{ include "backend.fullname" . }}-demo-notify-gateway
+            - secretRef:
+                name: {{ include "backend.fullname" . }}-demo-notify-gateway-id
+            {{- end }}
           {{- end }}
           env:
             - name: LOG_LEVEL

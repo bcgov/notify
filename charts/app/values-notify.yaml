@@ -4,7 +4,7 @@ global:
   domain: "apps.silver.devops.gov.bc.ca"
   autoscaling: false
   secrets:
-    enabled: false  # We'll manage secrets separately for now
+    enabled: false # We'll manage secrets separately for now
 
 # Backend (NestJS Notify API)
 backend:
@@ -47,7 +47,8 @@ backend:
     type: ClusterIP
     port: 80
     targetPort: 3000
-
+  demoNotifyGateway:
+    enabled: true
 # Disable frontend (we don't have one yet)
 frontend:
   enabled: false
