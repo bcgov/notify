@@ -81,7 +81,7 @@ backend:
   apiKey: ""
   #-- Demo notify gateway (Kong-style auth without bootstrap) + inline /notify. See backend/src/demo-notify-gateway/README.md
   demoNotifyGateway:
-    enabled: false
+    enabled: true
     trustProxy: "1"
     notifyInlineEmailEnabled: "true"
     gatewayAuthEnabled: "true"
@@ -92,6 +92,11 @@ backend:
     workspaceId: "default"
     authPaths: "POST:/api/v1/notify"
     chesFrom: "no.reply@gov.bc.ca"
+    chesBaseUrl: "https://ches-dev.api.gov.bc.ca/api/v1"
+    chesTokenUrl: "https://dev.loginproxy.gov.bc.ca/auth/realms/comsvcauth/protocol/openid-connect/token"
+    # Non-empty: use fixed CHES OAuth credentials. Empty: reuse Secret keys on upgrade (helm lookup) or generate placeholder id/secret on first install.
+    chesClientId: ""
+    chesClientSecret: ""
 
 frontend:
   # -- enable or disable a component deployment.

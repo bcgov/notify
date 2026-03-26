@@ -16,4 +16,6 @@ data:
   DEMO_NOTIFY_WORKSPACE_ID: {{ .Values.backend.demoNotifyGateway.workspaceId | quote }}
   DEMO_NOTIFY_AUTH_PATHS: {{ .Values.backend.demoNotifyGateway.authPaths | quote }}
   CHES_FROM: {{ .Values.backend.demoNotifyGateway.chesFrom | quote }}
+  CHES_BASE_URL: {{ .Values.backend.demoNotifyGateway.chesBaseUrl | quote }}
+  CHES_TOKEN_URL: {{ .Values.backend.demoNotifyGateway.chesTokenUrl | quote }}
 {{- end }}

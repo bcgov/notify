@@ -59,4 +59,44 @@ else new uuidv4 on first install. Requires live cluster for stable IDs across `h
 {{- end }}
 {{- end }}
 
+{{/*
+CHES_CLIENT_ID for demo gateway Secret: explicit values override; else reuse existing Secret key on upgrade (lookup);
+else new uuidv4 on first install.
+*/}}
+{{- define "backend.demoNotifyGatewayChesClientId" -}}
+{{- $cfg := .Values.backend.demoNotifyGateway }}
+{{- $override := $cfg.chesClientId | default "" | trim }}
+{{- if $override }}
+{{- $override }}
+{{- else }}
+{{- $secretName := printf "%s-demo-notify-gateway-id" (include "backend.fullname" .) }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $secretName }}
+{{- if and $existing $existing.data (hasKey $existing.data "CHES_CLIENT_ID") }}
+{{- index $existing.data "CHES_CLIENT_ID" | b64dec }}
+{{- else }}
+{{- uuidv4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+CHES_CLIENT_SECRET for demo gateway Secret: explicit values override; else reuse existing Secret key on upgrade (lookup);
+else random string on first install.
+*/}}
+{{- define "backend.demoNotifyGatewayChesClientSecret" -}}
+{{- $cfg := .Values.backend.demoNotifyGateway }}
+{{- $override := $cfg.chesClientSecret | default "" | trim }}
+{{- if $override }}
+{{- $override }}
+{{- else }}
+{{- $secretName := printf "%s-demo-notify-gateway-id" (include "backend.fullname" .) }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $secretName }}
+{{- if and $existing $existing.data (hasKey $existing.data "CHES_CLIENT_SECRET") }}
+{{- index $existing.data "CHES_CLIENT_SECRET" | b64dec }}
+{{- else }}
+{{- randAlphaNum 48 }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 
