@@ -20,7 +20,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { AuthenticatedGuard } from '../../../common/guards';
-import { ChesApiClient } from '../../ches-api.client';
+import { ChesService } from '../../ches.service';
 import type { ChesStatusQuery } from '../../ches-api.client';
 import { ChesMessageObject } from './schemas/ches-message-object';
 import { ChesTransactionResponse } from './schemas/ches-transaction-response';
@@ -32,7 +32,7 @@ import { ChesStatusObject } from './schemas/ches-status-object';
 @UseGuards(AuthenticatedGuard)
 @Controller('ches')
 export class ChesController {
-  constructor(private readonly chesApiClient: ChesApiClient) {}
+  constructor(private readonly chesService: ChesService) {}
 
   @Post('email')
   @HttpCode(HttpStatus.CREATED)
@@ -52,7 +52,7 @@ export class ChesController {
   async postEmail(
     @Body() body: ChesMessageObject,
   ): Promise<ChesTransactionResponse> {
-    return this.chesApiClient.sendEmail(body);
+    return this.chesService.sendEmail(body);
   }
 
   @Post('emailMerge')
@@ -69,7 +69,7 @@ export class ChesController {
   async postMerge(
     @Body() body: ChesMergeRequest,
   ): Promise<ChesTransactionResponse[]> {
-    return this.chesApiClient.sendEmailMerge(body);
+    return this.chesService.sendEmailMerge(body);
   }
 
   @Post('emailMerge/preview')
@@ -85,7 +85,7 @@ export class ChesController {
   async postPreview(
     @Body() body: ChesMergeRequest,
   ): Promise<ChesMessageObject[]> {
-    return this.chesApiClient.previewEmailMerge(body);
+    return this.chesService.previewEmailMerge(body);
   }
 
   @Get('status')
@@ -107,7 +107,7 @@ export class ChesController {
   async getStatusQuery(
     @Query() query: ChesStatusQuery,
   ): Promise<ChesStatusObject[]> {
-    return this.chesApiClient.getStatusQuery(query);
+    return this.chesService.getStatusQuery(query);
   }
 
   @Get('status/:msgId')
@@ -123,7 +123,7 @@ export class ChesController {
   async getStatusMessage(
     @Param('msgId') msgId: string,
   ): Promise<ChesStatusObject> {
-    return this.chesApiClient.getStatusMessage(msgId);
+    return this.chesService.getStatusMessage(msgId);
   }
 
   @Post('promote')
@@ -140,7 +140,7 @@ export class ChesController {
   @ApiResponse({ status: 202, description: 'Messages promoted' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async postPromoteQuery(@Query() query: ChesStatusQuery): Promise<void> {
-    return this.chesApiClient.promoteQuery(query);
+    return this.chesService.promoteQuery(query);
   }
 
   @Post('promote/:msgId')
@@ -151,7 +151,7 @@ export class ChesController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Message not found' })
   async postPromoteMessage(@Param('msgId') msgId: string): Promise<void> {
-    return this.chesApiClient.promoteMessage(msgId);
+    return this.chesService.promoteMessage(msgId);
   }
 
   @Delete('cancel')
@@ -168,7 +168,7 @@ export class ChesController {
   @ApiResponse({ status: 202, description: 'Messages cancelled' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async deleteCancelQuery(@Query() query: ChesStatusQuery): Promise<void> {
-    return this.chesApiClient.cancelQuery(query);
+    return this.chesService.cancelQuery(query);
   }
 
   @Delete('cancel/:msgId')
@@ -179,7 +179,7 @@ export class ChesController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Message not found' })
   async deleteCancelMessage(@Param('msgId') msgId: string): Promise<void> {
-    return this.chesApiClient.cancelMessage(msgId);
+    return this.chesService.cancelMessage(msgId);
   }
 
   @Get('health')
